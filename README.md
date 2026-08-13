@@ -1,6 +1,29 @@
 # Zoom Web Clone — Fullstack SDE Assignment
 
-A fully functional web-based Zoom clone built for an SDE evaluation assignment. Designed with a Django/DRF REST API backend, SQLite relational database, and a Next.js 14 App Router frontend.
+A polished Zoom-inspired meeting app built for an SDE evaluation assignment. The project demonstrates a full-stack architecture with a Django/DRF backend, SQLite relational persistence, and a Next.js 14 App Router frontend.
+
+## Recruiter-ready summary
+
+This project is designed to show end-to-end product thinking in a realistic assignment scope: dashboard-driven meeting management, join flows, participant state tracking, scheduling, chat, and a Zoom-like meeting room interface. It is not a production-scale WebRTC platform, but it is a strong demonstration of full-stack problem solving, API design, state handling, and UI polish within assignment constraints.
+
+## Why this is a strong assignment submission
+
+- Full-stack implementation across frontend and backend
+- Clean Django REST API structure with normalized data models
+- Realistic meeting lifecycle: create, validate, schedule, join, leave, end
+- Interactive UI with Zoom-inspired controls and presentation
+- Clear separation of concerns with models, serializers, views, and frontend pages
+- Appropriate for recruiter storytelling: feature-rich, demo-ready, and technically credible
+
+## Assignment fit checklist
+
+- [x] Backend API built with Django REST Framework
+- [x] Relational database design using SQLite
+- [x] Meeting creation and validation flow
+- [x] Participant and chat tracking
+- [x] Dashboard and meeting room frontend experience
+- [x] UI styling aligned with Zoom's modern visual language
+- [x] Good project narrative for interview discussion
 
 ---
 

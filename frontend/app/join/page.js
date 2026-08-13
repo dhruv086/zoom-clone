@@ -46,6 +46,10 @@ export default function PreJoinPage() {
   // 2. Camera Stream Manager
   useEffect(() => {
     const startCamera = async () => {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        return;
+      }
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -63,6 +67,12 @@ export default function PreJoinPage() {
           }
         } catch (err) {
           console.warn('Could not access camera/mic:', err);
+          setIsVideoOn(false);
+          setIsAudioOn(false);
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+          }
         }
       }
     };
@@ -72,9 +82,10 @@ export default function PreJoinPage() {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
-  }, [isVideoOn]);
+  }, [isVideoOn, isAudioOn]);
 
   // Toggle micro
   const handleToggleAudio = () => {
@@ -89,7 +100,13 @@ export default function PreJoinPage() {
 
   // Toggle camera
   const handleToggleVideo = () => {
-    setIsVideoOn(!isVideoOn);
+    const nextState = !isVideoOn;
+    setIsVideoOn(nextState);
+    if (streamRef.current) {
+      streamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = nextState;
+      });
+    }
   };
 
   // Handle joining meeting room
@@ -99,13 +116,14 @@ export default function PreJoinPage() {
     setIsJoining(true);
 
     try {
-      await api.post(`/meetings/${meetingInfo.id}/join/`, {
+      const joinRes = await api.post(`/meetings/${meetingInfo.id}/join/`, {
         display_name: displayName.trim() || 'Guest User',
         is_host: false,
         is_video_on: isVideoOn,
         is_audio_on: isAudioOn,
       });
 
+      sessionStorage.setItem('zoom_clone_participant_id', String(joinRes.data.id));
       sessionStorage.setItem('zoom_clone_name', displayName.trim() || 'Guest User');
       sessionStorage.setItem('zoom_clone_audio', isAudioOn.toString());
       sessionStorage.setItem('zoom_clone_video', isVideoOn.toString());

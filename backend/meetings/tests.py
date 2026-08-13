@@ -1,3 +1,50 @@
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APIClient
 
-# Create your tests here.
+from meetings.models import Meeting, Participant, User
+
+
+class MeetingParticipantAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.host = User.objects.create(display_name='Host User')
+        self.meeting = Meeting.objects.create(
+            title='Team Sync',
+            host=self.host,
+            meeting_id='123-456-7890',
+            invite_link='http://localhost:3000/join?mid=123-456-7890',
+            scheduled_at=timezone.now(),
+        )
+        self.host_participant = Participant.objects.create(
+            meeting=self.meeting,
+            display_name='Host User',
+            is_host=True,
+            is_audio_on=True,
+            is_video_on=True,
+        )
+        self.other_participant = Participant.objects.create(
+            meeting=self.meeting,
+            display_name='Guest User',
+            is_host=False,
+            is_audio_on=True,
+            is_video_on=True,
+        )
+
+    def test_toggle_audio_persists_state(self):
+        url = reverse('participant-toggle-audio', kwargs={'pk': self.other_participant.pk})
+        response = self.client.post(url, {'is_audio_on': False}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.other_participant.refresh_from_db()
+        self.assertFalse(self.other_participant.is_audio_on)
+
+    def test_mute_all_turns_off_all_active_participants(self):
+        url = reverse('meeting-mute-all', kwargs={'pk': self.meeting.pk})
+        response = self.client.post(url, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.meeting.participants.filter(left_at__isnull=True).update()
+        for participant in self.meeting.participants.filter(left_at__isnull=True):
+            self.assertFalse(participant.is_audio_on)

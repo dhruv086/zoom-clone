@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   Mic, MicOff, Video, VideoOff, Users, MessageSquare, PhoneOff, 
   ShieldAlert, VideoIcon, Smile, Settings, Shield, Grid, Tv, 
-  HelpCircle, Lock, LockOpen, Check, X 
+  HelpCircle, Lock, LockOpen, Check, X, LogOut, AlertTriangle 
 } from 'lucide-react';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -25,7 +25,9 @@ export default function MeetingRoomPage() {
   // Local media controls
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
+  const [selfParticipantId, setSelfParticipantId] = useState(null);
   const [isMutedAll, setIsMutedAll] = useState(false);
+  const [muteNotice, setMuteNotice] = useState('');
 
   // Layout UI states
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -35,6 +37,7 @@ export default function MeetingRoomPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
+  const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   
   const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'speaker'
   const [settingsTab, setSettingsTab] = useState('profile');
@@ -64,6 +67,7 @@ export default function MeetingRoomPage() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const mediaPermissionErrorRef = useRef(false);
 
   // 1. Fetch pre-join configurations from sessionStorage
   useEffect(() => {
@@ -101,6 +105,14 @@ export default function MeetingRoomPage() {
   // 2. Camera stream manager
   useEffect(() => {
     const startCamera = async () => {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        return;
+      }
+
+      if (mediaPermissionErrorRef.current) {
+        return;
+      }
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -116,8 +128,16 @@ export default function MeetingRoomPage() {
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
+          mediaPermissionErrorRef.current = false;
         } catch (err) {
+          mediaPermissionErrorRef.current = true;
           console.warn('Could not grab media streams:', err);
+          setIsVideoOn(false);
+          setIsAudioOn(false);
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+          }
         }
       }
     };
@@ -127,9 +147,10 @@ export default function MeetingRoomPage() {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
-  }, [isVideoOn, isSharingScreen]);
+  }, [isVideoOn, isSharingScreen, isAudioOn]);
 
   // 3. Screen sharing simulation
   const handleToggleScreenShare = async () => {
@@ -163,11 +184,34 @@ export default function MeetingRoomPage() {
     const fetchStatus = async () => {
       try {
         const res = await api.get(`/meetings/${meetingId}/`);
-        // Filter out yourself from the visual participant tile list
-        const others = res.data.participants.filter(
-          (p) => p.display_name !== displayName && p.left_at === null
-        );
-        setActiveParticipants(others);
+        const active = res.data.participants.filter((p) => p.left_at === null);
+
+        const currentParticipant = active.find((p) => p.display_name === displayName) || null;
+        if (currentParticipant) {
+          setSelfParticipantId(currentParticipant.id);
+          sessionStorage.setItem('zoom_clone_participant_id', String(currentParticipant.id));
+        }
+
+        const otherParticipants = active.filter((p) => p.display_name !== displayName);
+        setActiveParticipants(otherParticipants);
+
+        const audioFromDb = currentParticipant ? currentParticipant.is_audio_on : isAudioOn;
+        const videoFromDb = currentParticipant ? currentParticipant.is_video_on : isVideoOn;
+
+        if (!mediaPermissionErrorRef.current) {
+          setIsAudioOn(audioFromDb);
+          setIsVideoOn(videoFromDb);
+        }
+
+        if (isMutedAll && audioFromDb) {
+          setIsMutedAll(false);
+        }
+
+        if (streamRef.current) {
+          streamRef.current.getAudioTracks().forEach((track) => {
+            track.enabled = audioFromDb;
+          });
+        }
       } catch (err) {}
     };
 
@@ -218,7 +262,8 @@ export default function MeetingRoomPage() {
   };
 
   // Toggle Mute Audio
-  const handleToggleAudio = () => {
+  const handleToggleAudio = async () => {
+    mediaPermissionErrorRef.current = false;
     const nextState = !isAudioOn;
     setIsAudioOn(nextState);
     if (streamRef.current) {
@@ -226,31 +271,62 @@ export default function MeetingRoomPage() {
         track.enabled = nextState;
       });
     }
+
+    if (selfParticipantId) {
+      try {
+        await api.post(`/participants/${selfParticipantId}/toggle_audio/`, {
+          is_audio_on: nextState,
+        });
+      } catch (err) {
+        console.error('Failed to sync mic state', err);
+      }
+    }
   };
 
   // Toggle Video Stop
-  const handleToggleVideo = () => {
-    setIsVideoOn(!isVideoOn);
+  const handleToggleVideo = async () => {
+    mediaPermissionErrorRef.current = false;
+    const nextState = !isVideoOn;
+    setIsVideoOn(nextState);
+    if (streamRef.current) {
+      streamRef.current.getVideoTracks().forEach((track) => {
+        track.enabled = nextState;
+      });
+    }
+
+    if (selfParticipantId) {
+      try {
+        await api.post(`/participants/${selfParticipantId}/toggle_video/`, {
+          is_video_on: nextState,
+        });
+      } catch (err) {
+        console.error('Failed to sync camera state', err);
+      }
+    }
   };
 
-  // Leave meeting
+  // Leave meeting action
   const handleLeave = async () => {
     try {
       await api.post(`/meetings/${meetingId}/leave/`, {
         display_name: displayName,
       });
     } catch (err) {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
     router.push('/');
   };
 
-  // End meeting (Host only)
+  // End meeting for all action
   const handleEndAll = async () => {
-    if (confirm('Are you sure you want to end this meeting for all participants?')) {
-      try {
-        await api.post(`/meetings/${meetingId}/end/`);
-      } catch (err) {}
-      router.push('/');
+    try {
+      await api.post(`/meetings/${meetingId}/end/`);
+    } catch (err) {}
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
     }
+    router.push('/');
   };
 
   // Floating emojis trigger
@@ -263,9 +339,32 @@ export default function MeetingRoomPage() {
   };
 
   // Host Mute All action
-  const handleMuteAll = () => {
+  const handleMuteAll = async () => {
     setIsMutedAll(true);
-    alert('All participant microphones have been muted by the host.');
+    setIsAudioOn(false);
+    setActiveParticipants((prev) => prev.map((participant) => ({ ...participant, is_audio_on: false })));
+    if (streamRef.current) {
+      streamRef.current.getAudioTracks().forEach((track) => {
+        track.enabled = false;
+      });
+    }
+
+    if (selfParticipantId) {
+      try {
+        await api.post(`/participants/${selfParticipantId}/toggle_audio/`, { is_audio_on: false });
+      } catch (err) {
+        console.error('Failed to sync host mic mute state', err);
+      }
+    }
+
+    try {
+      await api.post(`/meetings/${meetingId}/mute_all/`);
+    } catch (err) {
+      console.error('Failed to mute all participants', err);
+    }
+
+    setMuteNotice('Host has muted all participant microphones');
+    setTimeout(() => setMuteNotice(''), 4000);
   };
 
   // Change theme mode
@@ -300,11 +399,9 @@ export default function MeetingRoomPage() {
 
   // Identify who is rendering inside the main speaker slot in Speaker View
   const getSpeakerTarget = () => {
-    // If you are host or there are no others, you are the main speaker
     if (displayName === hostName || activeParticipants.length === 0) {
       return { isSelf: true, name: displayName };
     }
-    // Else target the host or the first participant in list
     const hostUser = activeParticipants.find(p => p.display_name === hostName);
     if (hostUser) return { isSelf: false, data: hostUser };
     return { isSelf: false, data: activeParticipants[0] };
@@ -313,7 +410,7 @@ export default function MeetingRoomPage() {
   const speakerTarget = getSpeakerTarget();
 
   return (
-    <div className="h-screen w-full bg-[#1A1A1E] text-white flex flex-col overflow-hidden relative select-none">
+    <div className="h-screen w-full bg-[#1A1A1E] text-white flex flex-col overflow-hidden relative select-none font-sans">
       
       {/* Header bar overlay */}
       <header className="absolute top-0 left-0 w-full z-30 px-6 py-4 bg-gradient-to-b from-black/60 to-transparent flex items-center justify-between pointer-events-none">
@@ -372,6 +469,14 @@ export default function MeetingRoomPage() {
         <div className="absolute inset-0 border-4 border-green-500 pointer-events-none z-20"></div>
       )}
 
+      {/* Mute All Notification Banner */}
+      {muteNotice && (
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-40 bg-orange-600/90 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg animate-bounce flex items-center space-x-2 border border-orange-400/40">
+          <MicOff size={14} />
+          <span>{muteNotice}</span>
+        </div>
+      )}
+
       {/* Body panel split: Video grid vs Sidebar */}
       <div className="flex-1 flex overflow-hidden w-full h-full">
         
@@ -401,7 +506,11 @@ export default function MeetingRoomPage() {
                   </div>
                 )}
                 <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
-                  {isAudioOn ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                  {isAudioOn && !isMutedAll ? (
+                    <Mic size={14} className="text-green-500" />
+                  ) : (
+                    <MicOff size={14} className="text-red-500" />
+                  )}
                   <span>{displayName} (You)</span>
                 </div>
               </div>
@@ -442,7 +551,6 @@ export default function MeetingRoomPage() {
               
               {/* Horizontal Participant strip at the top */}
               <div className="flex items-center space-x-4 overflow-x-auto py-2 shrink-0 max-h-[140px]">
-                {/* You (Small preview in Speaker strip if you are not the speaker target) */}
                 {(!speakerTarget.isSelf) && (
                   <div className="w-40 aspect-video rounded-xl bg-gray-900 border border-white/5 relative overflow-hidden flex items-center justify-center shrink-0 shadow-md">
                     {isVideoOn ? (
@@ -462,11 +570,8 @@ export default function MeetingRoomPage() {
                   </div>
                 )}
 
-                {/* Other small preview tiles */}
                 {activeParticipants.map((p) => {
-                  // Skip if p is current main speaker
                   if (!speakerTarget.isSelf && speakerTarget.data.id === p.id) return null;
-                  
                   return (
                     <div key={p.id} className="w-40 aspect-video rounded-xl bg-gray-900 border border-white/5 relative overflow-hidden flex items-center justify-center shrink-0 shadow-md">
                       <div className="w-8 h-8 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center text-xs font-bold">
@@ -594,27 +699,25 @@ export default function MeetingRoomPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Host Tools panel */}
-                  {displayName === hostName && (
-                    <div className="bg-[#1e1e24] p-3 rounded-2xl border border-white/5 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-400">Host Controls</span>
-                      <Button
-                        variant="secondary"
-                        onClick={handleMuteAll}
-                        className="text-[10px] py-1 px-2.5 rounded-lg font-bold"
-                      >
-                        Mute All
-                      </Button>
-                    </div>
-                  )}
+                  {/* Host Tools panel - Always available to mute all */}
+                  <div className="bg-[#1e1e24] p-3 rounded-2xl border border-white/5 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-400">Host Actions</span>
+                    <Button
+                      variant="secondary"
+                      onClick={handleMuteAll}
+                      className="text-[10px] py-1.5 px-3 rounded-lg font-bold bg-orange-600/20 text-orange-400 border border-orange-500/30 hover:bg-orange-600/30"
+                    >
+                      Mute All
+                    </Button>
+                  </div>
 
                   {/* Participants status list */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs p-2 rounded-xl hover:bg-white/5">
                       <span className="font-semibold">{displayName} (You)</span>
                       <div className="flex items-center space-x-2 text-gray-500">
-                        {isAudioOn ? <Mic size={14} /> : <MicOff size={14} className="text-red-500" />}
-                        {isVideoOn ? <Video size={14} /> : <VideoOff size={14} className="text-red-500" />}
+                        {isAudioOn && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                        {isVideoOn ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
                       </div>
                     </div>
                     {activeParticipants.map((p) => (
@@ -624,8 +727,8 @@ export default function MeetingRoomPage() {
                       >
                         <span className="font-semibold">{p.display_name}</span>
                         <div className="flex items-center space-x-2 text-gray-500">
-                          {p.is_audio_on && !isMutedAll ? <Mic size={14} /> : <MicOff size={14} className="text-red-500" />}
-                          {p.is_video_on ? <Video size={14} /> : <VideoOff size={14} className="text-red-500" />}
+                          {p.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                          {p.is_video_on ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
                         </div>
                       </div>
                     ))}
@@ -718,6 +821,16 @@ export default function MeetingRoomPage() {
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
+
+                <div className="h-px bg-white/10 my-2"></div>
+                
+                <button
+                  type="button"
+                  onClick={handleMuteAll}
+                  className="w-full py-2 bg-orange-600/20 text-orange-400 font-bold border border-orange-500/30 rounded-lg hover:bg-orange-600/30 text-center"
+                >
+                  Mute All Mics
+                </button>
 
                 <div className="h-px bg-white/10 my-2"></div>
                 <span className="block font-bold text-gray-400 uppercase tracking-wide">Allow participants to:</span>
@@ -827,28 +940,61 @@ export default function MeetingRoomPage() {
           </button>
         </div>
 
-        {/* Leave/End call actions */}
-        <div>
-          {displayName === hostName ? (
-            <Button
-              variant="danger"
-              onClick={handleEndAll}
-              className="px-5 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center space-x-2"
-            >
-              <PhoneOff size={14} />
-              <span>End for All</span>
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              onClick={handleLeave}
-              className="px-5 py-2.5 rounded-2xl text-xs font-bold border border-red-500/20 text-red-500 hover:bg-red-500/10"
-            >
-              Leave Meeting
-            </Button>
-          )}
+        {/* Leave/End call button opening explicit action popover */}
+        <div className="relative">
+          <Button
+            variant="danger"
+            onClick={() => setIsEndModalOpen(true)}
+            className="px-5 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white"
+          >
+            <PhoneOff size={14} />
+            <span>End / Leave</span>
+          </Button>
         </div>
       </div>
+
+      {/* End / Leave Selection Modal */}
+      <Modal isOpen={isEndModalOpen} onClose={() => setIsEndModalOpen(false)} title="End or Leave Meeting">
+        <div className="space-y-4">
+          <p className="text-xs text-gray-400">
+            Select an action to exit the meeting room:
+          </p>
+
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={handleLeave}
+              className="w-full p-4 rounded-xl border border-gray-700 bg-[#232328] hover:bg-gray-800 text-white text-left font-bold text-xs flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <LogOut size={18} className="text-gray-400" />
+                <div>
+                  <div>Leave Meeting</div>
+                  <div className="text-[10px] text-gray-400 font-normal">Other participants can remain in the call.</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={handleEndAll}
+              className="w-full p-4 rounded-xl border border-red-500/30 bg-red-950/30 hover:bg-red-900/40 text-red-400 text-left font-bold text-xs flex items-center justify-between transition-colors"
+            >
+              <div className="flex items-center space-x-3">
+                <PhoneOff size={18} className="text-red-500" />
+                <div>
+                  <div>End Meeting for All</div>
+                  <div className="text-[10px] text-red-300 font-normal">Terminates the call session for every participant.</div>
+                </div>
+              </div>
+            </button>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button variant="secondary" onClick={() => setIsEndModalOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Settings Modal (Meeting Room Instance) */}
       <Modal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} title="Settings">

@@ -15,11 +15,14 @@ const geistMono = localFont({
 export const metadata = {
   title: "Zoom Web",
   description: "Zoom fullstack web client clone.",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

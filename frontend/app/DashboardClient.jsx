@@ -9,6 +9,21 @@ import Modal from '../components/Modal';
 import ClockComponent from '../components/Clock';
 import api from '../lib/api';
 
+const formatMeetingDate = (dateString) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(dateString));
+
+const formatMeetingTime = (dateString) =>
+  new Intl.DateTimeFormat('en-US', {
+    timeZone: 'UTC',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(dateString));
+
 export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
   const router = useRouter();
   const [isJoinOpen, setIsJoinOpen] = useState(false);
@@ -205,15 +220,13 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#121214] text-gray-900 dark:text-gray-100 transition-colors duration-200">
+    <div suppressHydrationWarning className="min-h-screen bg-gray-50 dark:bg-[#121214] text-gray-900 dark:text-gray-100 transition-colors duration-200">
       {/* Navbar */}
-      <header className="sticky top-0 bg-white dark:bg-[#1A1A1E] border-b border-gray-200 dark:border-[#232328] px-6 py-4 z-40">
+      <header className="sticky top-0 bg-white/85 dark:bg-[#1A1A1E]/85 backdrop-blur-xl border-b border-gray-200/80 dark:border-[#232328] px-6 py-4 z-40 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <svg className="w-10 h-10 text-[#0E71EB]" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 13.5c0 .83-.67 1.5-1.5 1.5h-6c-.83 0-1.5-.67-1.5-1.5v-7c0-.83.67-1.5 1.5-1.5h6c.83 0 1.5 6.7 1.5 1.5v7zm1.5-6.5l-2.5 2v2l2.5 2v-6z"/>
-            </svg>
-            <span className="text-xl font-bold tracking-tight text-[#0E71EB] dark:text-blue-400 select-none">zoom</span>
+            <img src="/icon.svg" alt="Zoom" className="w-10 h-10 rounded-xl shadow-sm" />
+            <span className="text-xl font-bold tracking-tight text-[#0B5CFF] dark:text-blue-400 select-none">zoom</span>
           </div>
           <div className="flex items-center space-x-2">
             <button 
@@ -257,7 +270,7 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
           <div className="grid grid-cols-2 gap-6">
             <div
               onClick={handleNewMeeting}
-              className="flex flex-col items-center justify-center p-8 text-center bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 rounded-3xl cursor-pointer shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 border border-orange-100/50 dark:border-orange-900/30"
+              className="flex flex-col items-center justify-center p-8 text-center bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 dark:from-orange-950/25 dark:to-orange-900/15 rounded-3xl cursor-pointer shadow-md hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 border border-orange-100/80 dark:border-orange-900/30"
             >
               <div className="w-16 h-16 bg-[#FF7426] rounded-2xl flex items-center justify-center mb-4 shadow-sm">
                 <Video size={36} className="text-white" />
@@ -375,8 +388,8 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
               ) : (
                 upcomingMeetings.map((meeting) => {
                   const startTime = new Date(meeting.scheduled_at);
-                  const timeFormatted = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const dateFormatted = startTime.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                  const timeFormatted = formatMeetingTime(startTime);
+                  const dateFormatted = formatMeetingDate(startTime);
 
                   return (
                     <div

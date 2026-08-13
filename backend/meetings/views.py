@@ -98,23 +98,15 @@ class MeetingViewSet(viewsets.ModelViewSet):
         meeting = self.get_object()
         display_name = request.data.get('display_name')
         
-        if not display_name:
-            return Response({"error": "display_name is required"}, status=status.HTTP_400_BAD_REQUEST)
-            
-        # Find active participant matching name in this meeting
-        participants = Participant.objects.filter(
-            meeting=meeting,
-            display_name=display_name,
-            left_at__isnull=True
-        )
-        
-        if not participants.exists():
-            return Response({"error": "Active participant not found"}, status=status.HTTP_404_NOT_FOUND)
-            
-        # Mark as left by setting left_at timestamp
-        for p in participants:
-            p.left_at = timezone.now()
-            p.save()
+        if display_name:
+            participants = Participant.objects.filter(
+                meeting=meeting,
+                display_name=display_name,
+                left_at__isnull=True
+            )
+            for p in participants:
+                p.left_at = timezone.now()
+                p.save()
             
         return Response({"status": "left"}, status=status.HTTP_200_OK)
 
@@ -129,6 +121,17 @@ class MeetingViewSet(viewsets.ModelViewSet):
         Participant.objects.filter(meeting=meeting, left_at__isnull=True).update(left_at=timezone.now())
         
         return Response({"status": "ended"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def mute_all(self, request, pk=None):
+        meeting = self.get_object()
+        queryset = Participant.objects.filter(meeting=meeting, left_at__isnull=True)
+        queryset.update(is_audio_on=False)
+
+        return Response({
+            "status": "muted_all",
+            "participants": ParticipantSerializer(queryset, many=True).data
+        }, status=status.HTTP_200_OK)
 
 
 class ParticipantViewSet(viewsets.ModelViewSet):

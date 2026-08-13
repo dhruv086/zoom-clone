@@ -3,21 +3,43 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7fb;
+  --foreground: #18181b;
+  --panel: #ffffff;
+  --muted: #5f6673;
+  --primary: #0b5cff;
+  --primary-2: #2d8cff;
+  --shadow: rgba(13, 30, 60, 0.12);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html.dark {
+  --background: #111827;
+  --foreground: #f5f7fb;
+  --panel: #1b1d28;
+  --muted: #a4a8b3;
+  --primary: #2d8cff;
+  --primary-2: #5aa2ff;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
+  background:
+    radial-gradient(circle at top, rgba(45, 140, 255, 0.12), transparent 28%),
+    var(--background);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button, input, textarea, select {
+  font: inherit;
 }
 
 @layer utilities {

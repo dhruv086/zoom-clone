@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Zoom logo">
+  <defs>
+    <linearGradient id="zoomBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D8CFF"/>
+      <stop offset="100%" stop-color="#0B5CFF"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#zoomBlue)"/>
+  <path d="M17 22.5c0-2.2 1.8-4 4-4h19.5c5.2 0 9.5 4.3 9.5 9.5v4.5c0 5.2-4.3 9.5-9.5 9.5H21c-2.2 0-4-1.8-4-4v-16Zm12.8 8.5 9.2-6.2v12.4l-9.2-6.2Z" fill="#fff"/>
+  <path d="M24.5 19.3h11.7c3.2 0 5.8 2.6 5.8 5.8v.4l-5.7 3.7v-4.1h-11.8V19.3Z" fill="#A9CEFF" opacity=".75"/>
+</svg>
