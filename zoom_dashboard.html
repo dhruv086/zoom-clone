@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ConnectPro Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#ecedff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "surface": "#f9f9f9",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-background": "#1a1c1c",
+                        "primary-fixed": "#dce1ff",
+                        "background": "#f9f9f9",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#fefcff",
+                        "surface-dim": "#dadada",
+                        "on-error-container": "#93000a",
+                        "outline": "#737688",
+                        "on-primary": "#ffffff",
+                        "secondary": "#005bb2",
+                        "on-tertiary-fixed": "#1a1a2a",
+                        "surface-variant": "#e2e2e2",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "surface-container": "#eeeeee",
+                        "on-tertiary-fixed-variant": "#464557",
+                        "on-primary-fixed-variant": "#003baf",
+                        "on-secondary-fixed-variant": "#00468b",
+                        "on-error": "#ffffff",
+                        "primary-container": "#0b5cff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#00164e",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#0050e4",
+                        "tertiary": "#525264",
+                        "primary": "#0046cc",
+                        "tertiary-container": "#6b6a7d",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-surface": "#1a1c1c",
+                        "on-secondary-fixed": "#001b3d",
+                        "outline-variant": "#c3c5d9",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b5c4ff",
+                        "secondary-fixed-dim": "#a9c7ff",
+                        "secondary-container": "#0073de",
+                        "surface-container-low": "#f3f3f3",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary-container": "#efecff",
+                        "on-surface-variant": "#434656",
+                        "tertiary-fixed-dim": "#c6c4da",
+                        "tertiary-fixed": "#e3e0f6",
+                        "inverse-surface": "#2f3131"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "gutter": "20px",
+                        "container-max": "1280px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased overflow-hidden flex h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-inverse-surface border-r border-outline-variant dark:border-outline flat no shadows flex flex-col h-screen py-lg docked left-0 h-full w-64 hidden md:flex shrink-0 z-20 relative">
+<div class="px-md mb-lg">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-headline-sm overflow-hidden shrink-0">
+<img alt="Organization Logo" class="w-full h-full object-cover" data-alt="A clean, modern corporate logo icon for an enterprise workspace, featuring abstract interconnected geometric shapes in a bright white against a solid secondary blue background. The aesthetic is professional, vector-style, and scalable." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5nHqcNOGIl8lE-YiUE4LjW8XVOGLK0SMvKJaresd6Psoro_lo-PNWJQtI3hebfYTO9VSQEDtQX1LXMM6yPFJ9OuB4dMHGNa82ARKwIxlG2oJ4NsUz5gvTGE0jj4-TcfKlEJFt97SVFkXSLpsxk7b61xzqoG-jJRbNO6na1fMbkt5H7OOvZ-F7WArpPbiY2lvQwfyJ25Pd7wW4i_Tqj2Kq42XLbJ3x3TcmShBPXI3wMZ60kxDzL5T9bQ"/>
+</div>
+<div>
+<h2 class="text-headline-sm font-headline-sm font-bold text-primary truncate">Workspace</h2>
+<p class="text-label-sm font-label-sm text-on-surface-variant truncate">Enterprise Plan</p>
+</div>
+</div>
+</div>
+<div class="px-md mb-lg">
+<button class="w-full bg-primary-container text-on-primary-container hover:bg-primary transition-colors py-sm px-md rounded-lg flex items-center justify-center gap-xs text-label-md font-label-md shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Meeting
+            </button>
+</div>
+<ul class="flex flex-col gap-xs px-sm flex-grow">
+<!-- Active: Home -->
+<li>
+<a class="text-primary dark:text-inverse-primary font-bold border-l-4 border-primary pl-4 bg-primary-fixed-dim/20 flex items-center gap-sm py-sm rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-label-md font-label-md">Home</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant dark:text-surface-variant pl-5 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all flex items-center gap-sm py-sm rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">video_call</span>
+<span class="text-label-md font-label-md">Meetings</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant dark:text-surface-variant pl-5 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all flex items-center gap-sm py-sm rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">calendar_today</span>
+<span class="text-label-md font-label-md">Upcoming</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant dark:text-surface-variant pl-5 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all flex items-center gap-sm py-sm rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">videocam</span>
+<span class="text-label-md font-label-md">Recordings</span>
+</a>
+</li>
+<li>
+<a class="text-on-surface-variant dark:text-surface-variant pl-5 hover:bg-surface-container-highest dark:hover:bg-surface-variant transition-all flex items-center gap-sm py-sm rounded-r-lg" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">chat</span>
+<span class="text-label-md font-label-md">Team Chat</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-grow flex flex-col min-w-0 overflow-hidden relative z-10">
+<!-- TopNavBar -->
+<header class="bg-surface dark:bg-inverse-surface border-b border-outline-variant dark:border-outline flat no shadows flex justify-between items-center w-full px-xl h-16 shrink-0 relative z-20">
+<div class="flex items-center gap-md lg:w-1/3">
+<span class="text-headline-md font-headline-md font-bold text-primary dark:text-inverse-primary md:hidden">ConnectPro</span>
+<div class="hidden md:flex relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-surface-container-low border border-outline-variant rounded-full py-xs pl-xl pr-sm text-body-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Search" type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors p-sm rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors p-sm rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container-high transition-colors p-sm rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined">apps</span>
+</button>
+<button class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary transition-all ml-xs">
+<img alt="User profile settings" class="w-full h-full object-cover" data-alt="A professional headshot of a diverse corporate user in a brightly lit modern office setting. The subject is wearing business casual attire, smiling warmly, shot in a high-key light mode style with a shallow depth of field, blurring the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3r-YiaUHllWQE6xFw1S0FCcoyCpML3BbpUsNs3IEOIPJCjdEuSWm8vVpzCaMDvfrDMHnEtBpjNV2wSUa6fk0WD8hgT4I4JH_L8Myt-NepKCf6aMlE50Z_flp2XmsmuZRYW2zCxt6NO1PEGp4UCONjURP4a4TClnwF0pYrZK7th8NBKhAboeiiA7h8If-cCvYEqof23lyNXaaKbc025qhXj0XbfwoAA5a_SWOqHfpmTBNRkGxu8fJJ9w"/>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-grow overflow-y-auto p-md md:p-xl flex flex-col gap-xl">
+<!-- Greeting -->
+<section>
+<h1 class="text-headline-lg font-headline-lg md:text-display-lg md:font-display-lg text-on-surface mb-xs">Good Morning, User</h1>
+<p class="text-body-lg font-body-lg text-on-surface-variant">Ready for your meetings today?</p>
+</section>
+<!-- Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-xl flex-grow items-start">
+<!-- Left Column (Actions & Recent) -->
+<div class="lg:col-span-8 flex flex-col gap-xl">
+<!-- Action Grid (Bento style) -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-sm">
+<!-- New Meeting -->
+<button class="bg-[#e76f51] hover:bg-[#d85e40] text-white p-lg rounded-xl flex flex-col items-center justify-center gap-sm shadow-sm transition-transform hover:scale-[1.02] aspect-square">
+<span class="material-symbols-outlined text-[48px]" style="font-variation-settings: 'FILL' 1;">videocam</span>
+<span class="text-label-md font-label-md mt-xs">New Meeting</span>
+</button>
+<!-- Join -->
+<button class="bg-secondary-container hover:bg-secondary text-on-primary p-lg rounded-xl flex flex-col items-center justify-center gap-sm shadow-sm transition-transform hover:scale-[1.02] aspect-square">
+<div class="bg-white/20 p-sm rounded-lg mb-xs">
+<span class="material-symbols-outlined text-[32px] text-white">add_box</span>
+</div>
+<span class="text-label-md font-label-md text-white">Join</span>
+</button>
+<!-- Schedule -->
+<button class="bg-secondary-container hover:bg-secondary text-on-primary p-lg rounded-xl flex flex-col items-center justify-center gap-sm shadow-sm transition-transform hover:scale-[1.02] aspect-square">
+<div class="bg-white/20 p-sm rounded-lg mb-xs">
+<span class="material-symbols-outlined text-[32px] text-white">calendar_month</span>
+</div>
+<span class="text-label-md font-label-md text-white">Schedule</span>
+</button>
+<!-- Share Screen -->
+<button class="bg-secondary-container hover:bg-secondary text-on-primary p-lg rounded-xl flex flex-col items-center justify-center gap-sm shadow-sm transition-transform hover:scale-[1.02] aspect-square">
+<div class="bg-white/20 p-sm rounded-lg mb-xs">
+<span class="material-symbols-outlined text-[32px] text-white">present_to_all</span>
+</div>
+<span class="text-label-md font-label-md text-white">Share Screen</span>
+</button>
+</div>
+<!-- Recent Meetings -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0px_4px_20px_rgba(0,0,0,0.04)] overflow-hidden flex-grow flex flex-col">
+<div class="p-md border-b border-outline-variant flex justify-between items-center bg-surface-bright">
+<h3 class="text-label-md font-label-md text-on-surface">Recent Meetings</h3>
+<button class="text-label-sm font-label-sm text-primary hover:underline">View All</button>
+</div>
+<div class="flex-grow flex flex-col items-center justify-center p-xl text-center min-h-[200px]">
+<div class="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center mb-sm">
+<span class="material-symbols-outlined text-outline text-[32px]">history</span>
+</div>
+<p class="text-body-md font-body-md text-on-surface-variant">No recent meetings to show.</p>
+<p class="text-body-sm font-body-sm text-outline mt-xs">Meetings you've attended recently will appear here.</p>
+</div>
+</div>
+</div>
+<!-- Right Column (Upcoming) -->
+<div class="lg:col-span-4 h-full">
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-[0px_4px_20px_rgba(0,0,0,0.04)] h-full flex flex-col overflow-hidden">
+<div class="relative h-32 bg-secondary-fixed">
+<!-- Subtle decorative pattern or animation placeholder could go here, keeping it clean for corporate modern -->
+<div class="absolute inset-0 bg-gradient-to-br from-primary-fixed to-secondary-fixed opacity-50"></div>
+<div class="absolute bottom-md left-md">
+<div class="text-headline-md font-headline-md text-on-secondary-fixed font-bold">10:42 AM</div>
+<div class="text-body-sm font-body-sm text-on-secondary-fixed-variant">Tuesday, October 24</div>
+</div>
+</div>
+<div class="p-md border-b border-outline-variant flex justify-between items-center bg-surface-bright shrink-0">
+<h3 class="text-label-md font-label-md text-on-surface">Upcoming</h3>
+<button class="text-on-surface-variant hover:bg-surface-container p-xs rounded-full transition-colors flex items-center">
+<span class="material-symbols-outlined text-[20px]">add</span>
+</button>
+</div>
+<div class="flex-grow flex flex-col items-center justify-center p-lg text-center min-h-[250px]">
+<div class="w-24 h-24 mb-md opacity-20">
+<!-- Simple calendar graphic placeholder -->
+<svg class="w-full h-full text-on-surface" fill="none" stroke="currentColor" stroke-width="1.5" viewbox="0 0 24 24">
+<path d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" stroke-linecap="round" stroke-linejoin="round"></path>
+</svg>
+</div>
+<h4 class="text-body-md font-body-md font-medium text-on-surface mb-xs">No upcoming meetings today</h4>
+<p class="text-body-sm font-body-sm text-on-surface-variant mb-md">Enjoy your free time or schedule a new one.</p>
+<button class="bg-surface text-primary border border-primary hover:bg-primary-fixed-dim/10 transition-colors py-xs px-md rounded-lg text-label-sm font-label-sm">
+                                Schedule Meeting
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

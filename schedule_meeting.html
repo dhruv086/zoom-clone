@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Schedule Meeting - ConnectPro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#ecedff",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8e8",
+                        "surface": "#f9f9f9",
+                        "surface-container-highest": "#e2e2e2",
+                        "on-background": "#1a1c1c",
+                        "primary-fixed": "#dce1ff",
+                        "background": "#f9f9f9",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#fefcff",
+                        "surface-dim": "#dadada",
+                        "on-error-container": "#93000a",
+                        "outline": "#737688",
+                        "on-primary": "#ffffff",
+                        "secondary": "#005bb2",
+                        "on-tertiary-fixed": "#1a1a2a",
+                        "surface-variant": "#e2e2e2",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "surface-container": "#eeeeee",
+                        "on-tertiary-fixed-variant": "#464557",
+                        "on-primary-fixed-variant": "#003baf",
+                        "on-secondary-fixed-variant": "#00468b",
+                        "on-error": "#ffffff",
+                        "primary-container": "#0b5cff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#00164e",
+                        "error-container": "#ffdad6",
+                        "surface-tint": "#0050e4",
+                        "tertiary": "#525264",
+                        "primary": "#0046cc",
+                        "tertiary-container": "#6b6a7d",
+                        "inverse-on-surface": "#f1f1f1",
+                        "on-surface": "#1a1c1c",
+                        "on-secondary-fixed": "#001b3d",
+                        "outline-variant": "#c3c5d9",
+                        "surface-bright": "#f9f9f9",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#b5c4ff",
+                        "secondary-fixed-dim": "#a9c7ff",
+                        "secondary-container": "#0073de",
+                        "surface-container-low": "#f3f3f3",
+                        "secondary-fixed": "#d6e3ff",
+                        "on-tertiary-container": "#efecff",
+                        "on-surface-variant": "#434656",
+                        "tertiary-fixed-dim": "#c6c4da",
+                        "tertiary-fixed": "#e3e0f6",
+                        "inverse-surface": "#2f3131"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "gutter": "20px",
+                        "container-max": "1280px",
+                        "base": "8px",
+                        "sm": "12px",
+                        "xl": "32px",
+                        "md": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Soft Ambient Shadow */
+        .ambient-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface h-screen w-full flex overflow-hidden">
+<!-- SideNavBar (Shared Component) -->
+<nav class="hidden md:flex flex-col h-screen py-lg bg-surface-container-low border-r border-outline-variant w-64 flex-shrink-0 z-10">
+<!-- Header -->
+<div class="px-lg mb-xl flex items-center gap-md">
+<img alt="Organization Logo" class="w-10 h-10 rounded-lg object-cover" data-alt="A small circular corporate logo for ConnectPro, featuring a minimalist geometric design in white and vibrant secondary blue, set against a pristine, well-lit white studio background. The style is modern, professional, and crisp, suitable for a high-end enterprise application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvGNMzm_AHV6G12uJfyE3WFLDxuHv9mg7LzS9USfybGEtsUJfRZEW3MOMZVL0vgqSJ9YySVWkzg3btZWY9DkePe0oXrJDPpgo4uDjjdDe2b1MZx-W3lhryoUn1wJ3JZqsnzZam7r4rGTDrIyLb8JOzCHKk2Ie__upj9vfj4fHxlaQb2W_po3LPsmXLIRYbWkYfctJO4JqwIGGdv9OsgcdARN9cMZ2lP6nf0xB1cGTfWxQ3krrEUODvGg"/>
+<div>
+<h2 class="text-headline-sm font-headline-sm font-bold text-primary">Workspace</h2>
+<p class="text-label-sm font-label-sm text-on-surface-variant">Enterprise Plan</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-lg mb-lg">
+<button class="w-full flex items-center justify-center gap-base py-sm px-md bg-primary-container text-on-primary-container rounded-lg hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-container-low">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">add</span>
+<span class="text-label-md font-label-md">New Meeting</span>
+</button>
+</div>
+<!-- Navigation Links -->
+<ul class="flex flex-col gap-xs flex-1 px-sm">
+<li>
+<a class="flex items-center gap-lg py-sm px-md text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-r-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">home</span>
+<span class="text-label-md font-label-md">Home</span>
+</a>
+</li>
+<!-- Active Tab: Meetings -->
+<li>
+<a class="flex items-center gap-lg py-sm text-primary font-bold border-l-4 border-primary pl-4 bg-primary-fixed-dim/20 rounded-r-full scale-95 transition-transform group" href="#">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">video_call</span>
+<span class="text-label-md font-label-md">Meetings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-lg py-sm px-md pl-5 text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-r-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">calendar_today</span>
+<span class="text-label-md font-label-md">Upcoming</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-lg py-sm px-md pl-5 text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-r-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">videocam</span>
+<span class="text-label-md font-label-md">Recordings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-lg py-sm px-md pl-5 text-on-surface-variant hover:bg-surface-container-highest transition-all rounded-r-full group" href="#">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">chat</span>
+<span class="text-label-md font-label-md">Team Chat</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col h-full overflow-hidden">
+<!-- TopNavBar (Shared Component) -->
+<header class="flex justify-between items-center w-full px-xl h-16 bg-surface border-b border-outline-variant z-10 flex-shrink-0">
+<div class="flex items-center">
+<span class="text-headline-md font-headline-md font-bold text-primary">ConnectPro</span>
+</div>
+<div class="flex items-center gap-md">
+<button aria-label="Settings" class="p-base text-on-surface-variant hover:bg-surface-container transition-colors rounded-full">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<button aria-label="Help" class="p-base text-on-surface-variant hover:bg-surface-container transition-colors rounded-full">
+<span class="material-symbols-outlined">help</span>
+</button>
+<button aria-label="Apps" class="p-base text-on-surface-variant hover:bg-surface-container transition-colors rounded-full">
+<span class="material-symbols-outlined">apps</span>
+</button>
+<div class="ml-sm">
+<img alt="User profile settings" class="w-8 h-8 rounded-full border border-outline-variant object-cover cursor-pointer hover:opacity-80 transition-opacity" data-alt="A professional headshot of a diverse corporate user, softly smiling, in high definition. The background is a beautifully blurred contemporary office setting with modern light-mode lighting, creating a trustworthy and polished profile image for an enterprise application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-YSIKqBlVtCjKN9CDY4JrrdFmT2Bf4r2lK0NlLdSs65QJdn4eP6ESDZrgFpLEDqYCK0_a9hcJvdAW4rHJUiW_ZpLzAplyXIQsujhuhvDxREM1b2Myy10kN-LeDDdyk1qWiMk3_WkBex1szxdF6OL4bHpk9OQax3_D1LeefhCRLUEG9qnLczZZCgT1HNkM9KKXcr-pHA9f4rUmpKpjD0yexqGhVWnxu69P2jbNjUrscSCREYjLhjBr1A"/>
+</div>
+</div>
+</header>
+<!-- Canvas / Form Area -->
+<main class="flex-1 overflow-y-auto p-md md:p-xl flex justify-center items-start">
+<div class="w-full max-w-4xl bg-surface-container-lowest ambient-shadow rounded-xl border border-outline-variant mt-md mb-xl">
+<!-- Form Header -->
+<div class="px-xl py-lg border-b border-outline-variant">
+<h1 class="text-headline-md font-headline-md text-on-surface">Schedule Meeting</h1>
+</div>
+<!-- Form Body -->
+<form class="p-xl flex flex-col gap-xl">
+<!-- Topic & Description -->
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm" for="topic">Topic</label>
+<div class="flex flex-col gap-xs">
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" id="topic" type="text" value="My Meeting"/>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm" for="description">Description <span class="text-label-sm font-normal">(Optional)</span></label>
+<div class="flex flex-col gap-xs">
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-y" id="description" rows="3"></textarea>
+</div>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Time & Date -->
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm">When</label>
+<div class="flex flex-col gap-md">
+<div class="flex flex-wrap items-center gap-sm">
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" type="date" value="2023-11-01"/>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" type="time" value="14:00"/>
+</div>
+<div class="flex items-center gap-sm">
+<span class="text-body-sm font-body-sm text-on-surface-variant">Duration:</span>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+<option>0</option>
+<option selected="">1</option>
+<option>2</option>
+<option>3</option>
+</select>
+<span class="text-body-sm font-body-sm text-on-surface-variant">hr</span>
+<select class="bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+<option selected="">0</option>
+<option>15</option>
+<option>30</option>
+<option>45</option>
+</select>
+<span class="text-body-sm font-body-sm text-on-surface-variant">min</span>
+</div>
+<div class="mt-sm">
+<select class="w-full max-w-xs bg-surface-container-lowest border border-outline-variant rounded-lg px-md py-sm text-body-md font-body-md text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all">
+<option>(GMT-08:00) Pacific Time (US and Canada)</option>
+<option>(GMT-05:00) Eastern Time (US and Canada)</option>
+<option>(GMT+00:00) London</option>
+</select>
+</div>
+</div>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Meeting ID -->
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm">Meeting ID</label>
+<div class="flex flex-col gap-sm pt-sm">
+<label class="flex items-center gap-base cursor-pointer">
+<input checked="" class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="meeting_id" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Generate Automatically</span>
+</label>
+<label class="flex items-center gap-base cursor-pointer">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="meeting_id" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Personal Meeting ID <span class="text-on-surface-variant ml-xs">(123 456 7890)</span></span>
+</label>
+</div>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Security -->
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm">Security</label>
+<div class="flex flex-col gap-md pt-sm">
+<label class="flex items-start gap-base cursor-pointer">
+<input checked="" class="mt-1 w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2" type="checkbox"/>
+<div>
+<span class="text-body-md font-body-md text-on-surface block">Passcode</span>
+<div class="mt-xs flex items-center gap-sm">
+<input class="bg-surface-container-low border border-outline-variant rounded-md px-sm py-xs text-body-sm font-body-sm text-on-surface-variant w-24 focus:outline-none focus:ring-2 focus:ring-primary" type="text" value="rA7b9z"/>
+</div>
+</div>
+</label>
+<label class="flex items-start gap-base cursor-pointer">
+<input checked="" class="mt-1 w-4 h-4 text-primary bg-surface border-outline-variant rounded focus:ring-primary focus:ring-2" type="checkbox"/>
+<div>
+<span class="text-body-md font-body-md text-on-surface block">Waiting Room</span>
+<span class="text-body-sm font-body-sm text-on-surface-variant block mt-xs">Only users admitted by the host can join the meeting.</span>
+</div>
+</label>
+</div>
+</div>
+<hr class="border-outline-variant border-t"/>
+<!-- Video & Audio -->
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm">Video</label>
+<div class="flex flex-col gap-sm pt-sm">
+<div class="flex items-center gap-xl">
+<span class="text-body-sm font-body-sm text-on-surface-variant w-24">Host</span>
+<label class="flex items-center gap-base cursor-pointer">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="video_host" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">On</span>
+</label>
+<label class="flex items-center gap-base cursor-pointer">
+<input checked="" class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="video_host" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Off</span>
+</label>
+</div>
+<div class="flex items-center gap-xl mt-sm">
+<span class="text-body-sm font-body-sm text-on-surface-variant w-24">Participants</span>
+<label class="flex items-center gap-base cursor-pointer">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="video_participants" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">On</span>
+</label>
+<label class="flex items-center gap-base cursor-pointer">
+<input checked="" class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="video_participants" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Off</span>
+</label>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-md md:gap-xl items-start mt-md">
+<label class="text-label-md font-label-md text-on-surface-variant pt-sm">Audio</label>
+<div class="flex items-center gap-xl pt-sm flex-wrap">
+<label class="flex items-center gap-base cursor-pointer">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="audio_type" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Telephone</span>
+</label>
+<label class="flex items-center gap-base cursor-pointer">
+<input class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="audio_type" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Computer Audio</span>
+</label>
+<label class="flex items-center gap-base cursor-pointer">
+<input checked="" class="w-4 h-4 text-primary bg-surface border-outline-variant focus:ring-primary focus:ring-2" name="audio_type" type="radio"/>
+<span class="text-body-md font-body-md text-on-surface">Both</span>
+</label>
+</div>
+</div>
+</form>
+<!-- Footer Actions -->
+<div class="px-xl py-lg border-t border-outline-variant bg-surface-container-low flex justify-end gap-md rounded-b-xl">
+<button class="px-lg py-sm rounded-lg text-label-md font-label-md text-secondary border border-secondary hover:bg-surface-container transition-colors focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2" type="button">
+                        Cancel
+                    </button>
+<button class="px-lg py-sm rounded-lg text-label-md font-label-md bg-primary-container text-on-primary-container hover:bg-primary transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2" type="button">
+                        Save
+                    </button>
+</div>
+</div>
+</main>
+</div>
+</body></html>

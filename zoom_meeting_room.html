@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Meeting Room</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-container": "#ecedff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#e8e8e8",
+                    "surface": "#f9f9f9",
+                    "surface-container-highest": "#e2e2e2",
+                    "on-background": "#1a1c1c",
+                    "primary-fixed": "#dce1ff",
+                    "background": "#f9f9f9",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#fefcff",
+                    "surface-dim": "#dadada",
+                    "on-error-container": "#93000a",
+                    "outline": "#737688",
+                    "on-primary": "#ffffff",
+                    "secondary": "#005bb2",
+                    "on-tertiary-fixed": "#1a1a2a",
+                    "surface-variant": "#e2e2e2",
+                    "primary-fixed-dim": "#b5c4ff",
+                    "surface-container": "#eeeeee",
+                    "on-tertiary-fixed-variant": "#464557",
+                    "on-primary-fixed-variant": "#003baf",
+                    "on-secondary-fixed-variant": "#00468b",
+                    "on-error": "#ffffff",
+                    "primary-container": "#0b5cff",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed": "#00164e",
+                    "error-container": "#ffdad6",
+                    "surface-tint": "#0050e4",
+                    "tertiary": "#525264",
+                    "primary": "#0046cc",
+                    "tertiary-container": "#6b6a7d",
+                    "inverse-on-surface": "#f1f1f1",
+                    "on-surface": "#1a1c1c",
+                    "on-secondary-fixed": "#001b3d",
+                    "outline-variant": "#c3c5d9",
+                    "surface-bright": "#f9f9f9",
+                    "on-secondary": "#ffffff",
+                    "inverse-primary": "#b5c4ff",
+                    "secondary-fixed-dim": "#a9c7ff",
+                    "secondary-container": "#0073de",
+                    "surface-container-low": "#f3f3f3",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-tertiary-container": "#efecff",
+                    "on-surface-variant": "#434656",
+                    "tertiary-fixed-dim": "#c6c4da",
+                    "tertiary-fixed": "#e3e0f6",
+                    "inverse-surface": "#2f3131"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "4px",
+                    "gutter": "20px",
+                    "container-max": "1280px",
+                    "base": "8px",
+                    "sm": "12px",
+                    "xl": "32px",
+                    "md": "16px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-on-background w-full h-screen overflow-hidden flex flex-col font-body-md text-on-surface">
+<!-- Top Left Meeting Info Overlay -->
+<div class="absolute top-md left-md z-10 flex items-center gap-base bg-inverse-surface/80 backdrop-blur-md px-sm py-xs rounded-lg text-inverse-on-surface shadow-md border border-outline/20">
+<span class="material-symbols-outlined text-[20px] text-primary-fixed-dim">verified_user</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md tracking-wider">123 456 7890</span>
+<span class="font-label-sm text-label-sm opacity-70">Passcode: *****</span>
+</div>
+</div>
+<!-- Active Speaker / Top Right Overlay -->
+<div class="absolute top-md right-md z-10 flex items-center gap-xs bg-inverse-surface/80 backdrop-blur-md px-sm py-xs rounded-lg text-inverse-on-surface shadow-md border border-outline/20 cursor-pointer hover:bg-inverse-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">grid_view</span>
+<span class="font-label-sm text-label-sm">View</span>
+</div>
+<!-- Video Grid Area -->
+<div class="flex-1 p-md pb-[90px] grid grid-cols-2 grid-rows-2 gap-base h-full w-full max-w-container-max mx-auto">
+<!-- Video Tile 1 (You) -->
+<div class="relative rounded-xl overflow-hidden bg-inverse-surface border border-outline/30 shadow-lg group">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a corporate executive in a well-lit modern home office. Daylight fills the room. The individual is wearing a crisp button-down shirt, looking directly into the camera. The background is slightly out of focus, revealing subtle indoor plants and minimal decor. The aesthetic is clean, high-contrast, and realistic for a high-end video conference." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBXWDGQmz3-nOKlG0_n40Z5fvKT4f4ay4EpvK39vbF3McFO6vR4l0ZDwS_gg2guCU4ggMRnX9L4XaOrynasgGlc4I5iK2Mj8WCjZq9rQjo-hpaLV2GuFoM7akCdolnOIjilbPe_GxvbcVoxUdL320_Lj_foNJ3pZmcqsoHf_ZLApZkSEEHk-KmEi2MOiVyrMo4Jl8xQEcSOeeRF3QPOmcd3go7nCellZsl-T78SArmW33CvigSC057YSA"/>
+<div class="absolute bottom-sm left-sm bg-[#1a1c1c]/80 backdrop-blur-sm px-sm py-xs rounded-md flex items-center gap-xs border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-error" style="font-variation-settings: 'FILL' 1;">mic_off</span>
+<span class="font-label-sm text-label-sm text-white">You</span>
+</div>
+<!-- Audio indicator overlay on active speaking (hidden here) -->
+<div class="absolute inset-0 border-2 border-transparent group-hover:border-outline/20 rounded-xl transition-colors pointer-events-none"></div>
+</div>
+<!-- Video Tile 2 -->
+<div class="relative rounded-xl overflow-hidden bg-inverse-surface border border-outline/30 shadow-lg group">
+<img class="w-full h-full object-cover" data-alt="A professional video feed of a female software engineer in a corporate boardroom setting. The lighting is bright and even, highlighting a modern glass wall behind her. She is attentive and dressed in business casual attire. The image is crisp, realistic, and embodies a premium corporate modern aesthetic suitable for a professional software interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgqV3WTU6K4YaPwqMT0BDtaU1vzYxaMhr6ZIoV21O1vqjMfbfD8cDYNRIYt3G2Hf50irhqmPIikjK3yyklcOETbzLpJ_U93Gk2Li_dAGcP_F55aI9tKHes8m_9GU_vBa1lWF_AOJfec_acejBwwXvyXLEsD3ApVDegsb_vPW67T7pxH_UplmQzgYNMFSmzAXeQNjshgF-M4ld_PdlPx9s1k--XP0ilvcqm6qeJt7FjicvBmKswrfbz5g"/>
+<div class="absolute bottom-sm left-sm bg-[#1a1c1c]/80 backdrop-blur-sm px-sm py-xs rounded-md flex items-center gap-xs border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-white">mic</span>
+<span class="font-label-sm text-label-sm text-white">Sarah Chen</span>
+</div>
+<div class="absolute top-sm right-sm bg-primary/90 text-white px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">Host</div>
+<!-- Active Speaker Ring -->
+<div class="absolute inset-0 border-2 border-primary rounded-xl transition-colors pointer-events-none"></div>
+</div>
+<!-- Video Tile 3 -->
+<div class="relative rounded-xl overflow-hidden bg-inverse-surface border border-outline/30 shadow-lg group">
+<img class="w-full h-full object-cover" data-alt="A male product manager in a minimalist, dimly lit home office with a single warm desk lamp providing accented lighting. He looks engaged and is wearing a dark solid t-shirt. The camera angle is straight-on, creating an intimate yet professional tone typical of remote work environments. High resolution, clear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrvPe1WclcOJdqYP5cw-ZGrDdxWKnCkC7lJMd5eLsZMWhyAog2Qygc0boKDn3a6SR76lQswAE4Thx68c_zJjfYO6oYWgmTDLkcIjRjXieYzh_ljkA1VHWC8YSoldb-rwTFtmXToBRD5jfAK2rFttiCv-u9ObXKUTFAXidG3KtoG5Z_kfztgsLg3uDgQgrUmT38eQuFPZb3LB7s-n0bE28DqmufOa9CE7zWLNmn301HPMDr-TOCl4KpcQ"/>
+<div class="absolute bottom-sm left-sm bg-[#1a1c1c]/80 backdrop-blur-sm px-sm py-xs rounded-md flex items-center gap-xs border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-error" style="font-variation-settings: 'FILL' 1;">mic_off</span>
+<span class="font-label-sm text-label-sm text-white">Michael Wong</span>
+</div>
+</div>
+<!-- Video Tile 4 -->
+<div class="relative rounded-xl overflow-hidden bg-inverse-surface border border-outline/30 shadow-lg group">
+<img class="w-full h-full object-cover" data-alt="A woman in a bright, sunlit creative studio space with abstract art faintly visible on the white walls behind her. She is smiling subtly, wearing professional yet stylish glasses and a neutral blazer. The overall vibe is calm, efficient, and highly professional, fitting a high-stakes design or marketing meeting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL42vsJMyv0_wt8yLEFVaAoj4Pjc7vG7JDfvMoxLoIjSV6llknKZ47Mgfo3fHyPgmJAoQ4D0Ai-uf9Zg3QLQir5qUKFvoQYixyjHU-HlTndOVd28-PvyNtYjQMmhePEGLTv7LMo4mJWAIKraE4OqaqwA3IC3aVlqnE2UnU8RMjVwaKqstm0c3PKjzngVxG8DSALnPLz1Z70wyy7oWrx5BCYd1miHsf51KQ4hLdEFLOt4ehg0BwZYNgXw"/>
+<div class="absolute bottom-sm left-sm bg-[#1a1c1c]/80 backdrop-blur-sm px-sm py-xs rounded-md flex items-center gap-xs border border-white/10">
+<span class="material-symbols-outlined text-[16px] text-error" style="font-variation-settings: 'FILL' 1;">mic_off</span>
+<span class="font-label-sm text-label-sm text-white">Elena Rodriguez</span>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (Shared Component) -->
+<div class="fixed bottom-0 left-0 w-full z-50 flex justify-center gap-sm md:gap-md px-lg py-sm rounded-t-xl shadow-lg bg-surface-container-highest dark:bg-inverse-surface border-t border-outline/10">
+<!-- Mute -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">mic</span>
+<span class="text-label-sm font-label-sm">Mute</span>
+</button>
+<!-- Video -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">videocam</span>
+<span class="text-label-sm font-label-sm">Video</span>
+</button>
+<div class="w-px h-10 bg-outline/20 self-center mx-1"></div>
+<!-- Security -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">security</span>
+<span class="text-label-sm font-label-sm">Security</span>
+</button>
+<!-- Participants -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] relative group">
+<div class="relative">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">group</span>
+<span class="absolute -top-1 -right-2 bg-secondary text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-inverse-surface">4</span>
+</div>
+<span class="text-label-sm font-label-sm">Participants</span>
+</button>
+<!-- Chat -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">forum</span>
+<span class="text-label-sm font-label-sm">Chat</span>
+</button>
+<!-- Share (Highlighted Green) -->
+<button class="flex flex-col items-center justify-center text-[#00d05f] hover:bg-[#00d05f]/10 rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">present_to_all</span>
+<span class="text-label-sm font-label-sm">Share</span>
+</button>
+<!-- Record -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">radio_button_checked</span>
+<span class="text-label-sm font-label-sm">Record</span>
+</button>
+<!-- Reactions -->
+<button class="flex flex-col items-center justify-center text-on-surface-variant dark:text-surface-variant hover:bg-surface-container-high dark:hover:bg-surface-variant rounded-lg transition-all p-2 min-w-[72px] group">
+<span class="material-symbols-outlined text-[24px] mb-1 group-hover:-translate-y-0.5 transition-transform">add_reaction</span>
+<span class="text-label-sm font-label-sm">Reactions</span>
+</button>
+<div class="w-px h-10 bg-outline/20 self-center mx-1"></div>
+<!-- Leave (Destructive) -->
+<button class="flex flex-col items-center justify-center text-error hover:bg-error/10 rounded-lg transition-all p-2 min-w-[72px] group ml-2">
+<div class="bg-error text-white rounded-lg px-6 py-1.5 mb-1 group-hover:bg-error/90 transition-colors flex items-center justify-center">
+<span class="text-label-md font-label-md">End</span>
+</div>
+</button>
+</div>
+</body></html>
