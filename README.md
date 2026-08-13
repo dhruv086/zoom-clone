@@ -175,5 +175,3 @@ Next.js 14 App Router splits components into **Server Components** and **Client 
 ## 💡 Assumptions Made
 1. **Single User Mode**: Authentication is omitted per requirements. Guest User (ID `1`) acts as the active session.
 2. **WebRTC Integration**: Actual peer-to-peer WebRTC video streaming is simulated. The grid renders your live camera and displays visual animated placeholders for other participants fetched from the database (opening additional tabs/windows in the same meeting will dynamically join them and render their camera states).
-#   z o o m - c l o n e  
- 
