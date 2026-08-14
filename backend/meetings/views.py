@@ -84,8 +84,13 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
         meeting = self.get_object()
-        display_name = request.data.get('display_name', 'Guest User')
         is_host = has_host_access(meeting, request.data.get('host_access_token'))
+        
+        # Enforce meeting lock policy
+        if meeting.is_locked and not is_host:
+            return Response({'detail': 'This meeting is locked by the host.'}, status=status.HTTP_403_FORBIDDEN)
+
+        display_name = request.data.get('display_name', 'Guest User')
         is_video_on = request.data.get('is_video_on', True)
         is_audio_on = request.data.get('is_audio_on', True)
 
@@ -158,6 +163,27 @@ class MeetingViewSet(viewsets.ModelViewSet):
             "status": "muted_all",
             "participants": ParticipantSerializer(queryset, many=True).data
         }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['patch'])
+    def update_security(self, request, pk=None):
+        meeting = self.get_object()
+        is_host = has_host_access(meeting, request.data.get('host_access_token'))
+        if not is_host:
+            return Response({'detail': 'Only the host can modify security policies.'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if 'is_locked' in request.data:
+            meeting.is_locked = request.data['is_locked']
+        if 'waiting_room_enabled' in request.data:
+            meeting.waiting_room_enabled = request.data['waiting_room_enabled']
+        if 'allow_share_screen' in request.data:
+            meeting.allow_share_screen = request.data['allow_share_screen']
+        if 'allow_chat' in request.data:
+            meeting.allow_chat = request.data['allow_chat']
+        if 'allow_rename' in request.data:
+            meeting.allow_rename = request.data['allow_rename']
+            
+        meeting.save()
+        return Response(MeetingSerializer(meeting).data)
 
     @action(detail=True, methods=['post'])
     def livekit_token(self, request, pk=None):

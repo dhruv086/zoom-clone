@@ -80,9 +80,17 @@ export default function MeetingRoomPage() {
   const videoRef = useRef(null);
   const roomRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const localScreenStreamRef = useRef(null);
+  const socketRef = useRef(null);
 
-  // 1. Fetch pre-join configurations from sessionStorage
+  // 1. Fetch pre-join configurations from sessionStorage and consume pending screen stream once on mount
   useEffect(() => {
+    // Consume screen share stream once on page mount to avoid race conditions
+    const pendingStream = consumePendingScreenShareStream();
+    if (pendingStream) {
+      localScreenStreamRef.current = pendingStream;
+    }
+
     const savedName = sessionStorage.getItem('zoom_clone_name') || 'Guest User';
     const savedAudio = sessionStorage.getItem('zoom_clone_audio') === 'true';
     const savedVideo = sessionStorage.getItem('zoom_clone_video') === 'true';
@@ -100,6 +108,13 @@ export default function MeetingRoomPage() {
         setMeetingTitle(res.data.title);
         setMeetingNum(res.data.meeting_id);
         setHostName(res.data.host.display_name);
+        
+        // Update security policies
+        setIsMeetingLocked(res.data.is_locked || false);
+        setIsWaitingRoomEnabled(res.data.is_waiting_room_enabled || false);
+        setAllowShareScreen(res.data.allow_share_screen !== false);
+        setAllowChat(res.data.allow_chat !== false);
+        setAllowRename(res.data.allow_rename !== false);
       } catch (err) {
         console.error('Failed to fetch meeting details', err);
       }
@@ -140,7 +155,14 @@ export default function MeetingRoomPage() {
         console.warn('Failed to enumerate devices:', err);
       }
     };
+    
+    // Listen for device changes
+    navigator.mediaDevices?.addEventListener('devicechange', fetchDevices);
     fetchDevices();
+    
+    return () => {
+      navigator.mediaDevices?.removeEventListener('devicechange', fetchDevices);
+    };
   }, []);
 
   const handleVideoDeviceChange = async (deviceId) => {
@@ -413,6 +435,12 @@ export default function MeetingRoomPage() {
             room.disconnect();
             router.push('/?kicked=true');
           }
+        } else if (message.type === 'security-policy') {
+          setIsMeetingLocked(message.policy.isLocked);
+          setIsWaitingRoomEnabled(message.policy.isWaitingRoomEnabled);
+          setAllowShareScreen(message.policy.allowShareScreen);
+          setAllowChat(message.policy.allowChat);
+          setAllowRename(message.policy.allowRename);
         }
       } catch (error) {
         console.warn('Ignoring invalid LiveKit room message', error);
@@ -476,7 +504,7 @@ export default function MeetingRoomPage() {
         if (wantsVideo && videoRef.current) {
           room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach(videoRef.current);
         }
-        const pendingScreenShare = consumePendingScreenShareStream();
+        const pendingScreenShare = localScreenStreamRef.current;
         if (pendingScreenShare?.getVideoTracks()[0]) {
           sessionStorage.removeItem('zoom_clone_pre_share');
           const screenTrack = pendingScreenShare.getVideoTracks()[0];
@@ -487,8 +515,6 @@ export default function MeetingRoomPage() {
           });
           if (!cancelled) setIsSharingScreen(true);
         } else if (sessionStorage.getItem('zoom_clone_pre_share') === 'true') {
-          // If a refresh happened between the picker and room connection,
-          // request a new stream from the room's Share Screen control.
           sessionStorage.removeItem('zoom_clone_pre_share');
         }
         if (!cancelled) {
@@ -678,6 +704,39 @@ export default function MeetingRoomPage() {
     }
   };
 
+  // Host update security policy
+  const handleSecurityPolicyChange = async (policyKey, value) => {
+    if (policyKey === 'is_locked') setIsMeetingLocked(value);
+    if (policyKey === 'waiting_room_enabled') setIsWaitingRoomEnabled(value);
+    if (policyKey === 'allow_share_screen') setAllowShareScreen(value);
+    if (policyKey === 'allow_chat') setAllowChat(value);
+    if (policyKey === 'allow_rename') setAllowRename(value);
+
+    try {
+      await api.patch(`/meetings/${meetingId}/update_security/`, {
+        host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
+        [policyKey]: value,
+      });
+
+      const msg = {
+        type: 'security-policy',
+        policy: {
+          isLocked: policyKey === 'is_locked' ? value : isMeetingLocked,
+          isWaitingRoomEnabled: policyKey === 'waiting_room_enabled' ? value : isWaitingRoomEnabled,
+          allowShareScreen: policyKey === 'allow_share_screen' ? value : allowShareScreen,
+          allowChat: policyKey === 'allow_chat' ? value : allowChat,
+          allowRename: policyKey === 'allow_rename' ? value : allowRename,
+        }
+      };
+      await roomRef.current?.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify(msg)),
+        { reliable: true }
+      );
+    } catch (err) {
+      console.error('Failed to update security policy:', err);
+    }
+  };
+
   // Change theme mode
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -816,7 +875,7 @@ export default function MeetingRoomPage() {
                   </div>
                 )}
                 <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
-                  {isAudioOn && !isMutedAll ? (
+                  {isAudioOn ? (
                     <Mic size={14} className="text-green-500" />
                   ) : (
                     <MicOff size={14} className="text-red-500" />
@@ -862,7 +921,7 @@ export default function MeetingRoomPage() {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
-                      {participant.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                      {participant.is_audio_on ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
                       <span>{participant.display_name}</span>
                     </div>
                     {participant.is_host && (
@@ -1082,7 +1141,7 @@ export default function MeetingRoomPage() {
                     <div className="flex items-center justify-between text-xs p-2 rounded-xl hover:bg-white/5">
                       <span className="font-semibold">{displayName} (You)</span>
                       <div className="flex items-center space-x-2 text-gray-500">
-                        {isAudioOn && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                        {isAudioOn ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
                         {isVideoOn ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
                       </div>
                     </div>
@@ -1104,7 +1163,7 @@ export default function MeetingRoomPage() {
                             </button>
                           )}
                           <div className="flex items-center space-x-1">
-                            {p.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                            {p.is_audio_on ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
                             {p.is_video_on ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
                           </div>
                         </div>
@@ -1185,7 +1244,7 @@ export default function MeetingRoomPage() {
                   <input
                     type="checkbox"
                     checked={isMeetingLocked}
-                    onChange={(e) => setIsMeetingLocked(e.target.checked)}
+                    onChange={(e) => handleSecurityPolicyChange('is_locked', e.target.checked)}
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
@@ -1195,7 +1254,7 @@ export default function MeetingRoomPage() {
                   <input
                     type="checkbox"
                     checked={isWaitingRoomEnabled}
-                    onChange={(e) => setIsWaitingRoomEnabled(e.target.checked)}
+                    onChange={(e) => handleSecurityPolicyChange('waiting_room_enabled', e.target.checked)}
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
@@ -1218,7 +1277,7 @@ export default function MeetingRoomPage() {
                   <input
                     type="checkbox"
                     checked={allowShareScreen}
-                    onChange={(e) => setAllowShareScreen(e.target.checked)}
+                    onChange={(e) => handleSecurityPolicyChange('allow_share_screen', e.target.checked)}
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
@@ -1228,7 +1287,7 @@ export default function MeetingRoomPage() {
                   <input
                     type="checkbox"
                     checked={allowChat}
-                    onChange={(e) => setAllowChat(e.target.checked)}
+                    onChange={(e) => handleSecurityPolicyChange('allow_chat', e.target.checked)}
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>
@@ -1238,7 +1297,7 @@ export default function MeetingRoomPage() {
                   <input
                     type="checkbox"
                     checked={allowRename}
-                    onChange={(e) => setAllowRename(e.target.checked)}
+                    onChange={(e) => handleSecurityPolicyChange('allow_rename', e.target.checked)}
                     className="rounded border-gray-700 bg-gray-800 text-blue-500 focus:ring-blue-500"
                   />
                 </label>

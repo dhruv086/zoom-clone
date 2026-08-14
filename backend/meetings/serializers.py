@@ -44,8 +44,9 @@ class MeetingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'meeting_id', 'title', 'description', 'host',
             'scheduled_at', 'duration_minutes', 'password', 'invite_link',
-            'is_active', 'is_instant', 'created_at', 'participants',
-            'active_participants_count'
+            'is_active', 'is_instant', 'is_locked', 'waiting_room_enabled',
+            'allow_share_screen', 'allow_chat', 'allow_rename', 'created_at',
+            'participants', 'active_participants_count'
         ]
         read_only_fields = ['id', 'meeting_id', 'invite_link', 'is_instant', 'is_active', 'created_at']
 

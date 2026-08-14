@@ -650,31 +650,41 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
         <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed pr-1 overflow-y-auto max-h-[70vh]">
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              <span>Testing Multi-User Interaction</span>
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+              <span>Multi-User Collaboration</span>
             </h4>
             <p className="text-xs">
-              To test the synchronized chat and participant indicators, simply copy the meeting invite link and paste it into a <strong>separate incognito browser window</strong>.
+              To test the synchronized real-time chat, participant lists, and moderation controls, copy the meeting invite link and open it in a <strong>separate incognito browser window</strong>.
             </p>
           </section>
 
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              <span>Hardware Video & Audio Preview</span>
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+              <span>Video & Audio Inputs</span>
             </h4>
             <p className="text-xs">
-              Before entering a meeting, the <strong>Pre-Join Screen</strong> will request your webcam permissions, mirroring your camera preview so you can verify settings. Toggles inside this screen are directly bound to active tracks.
+              Open the settings panel (gear icon) to select your actual connected camera and microphone. In a live meeting room, changing these selectors dynamically switches your media stream in real-time.
             </p>
           </section>
 
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              <span>Screen Sharing Simulation</span>
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+              <span>Screen Sharing</span>
             </h4>
             <p className="text-xs">
-              Click <strong>Share Screen</strong> on the dashboard to join an active meeting with screen sharing already pre-activated, or click <strong>Share Screen</strong> inside the live meeting room.
+              Click <strong>Share Screen</strong> on the dashboard to validate a meeting ID and start presenting immediately, or use the <strong>Share Screen</strong> control inside the live meeting room.
+            </p>
+          </section>
+
+          <section className="space-y-2">
+            <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
+              <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
+              <span>Host Moderation & Security</span>
+            </h4>
+            <p className="text-xs">
+              As a meeting host, you can lock the meeting, enable waiting rooms, restrict chat/rename/sharing permissions, mute all microphones, or eject users from the room in real-time.
             </p>
           </section>
 

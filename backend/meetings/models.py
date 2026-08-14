@@ -37,6 +37,11 @@ class Meeting(models.Model):
     invite_link = models.URLField(max_length=500)
     is_active = models.BooleanField(default=True)
     is_instant = models.BooleanField(default=False)
+    is_locked = models.BooleanField(default=False)
+    waiting_room_enabled = models.BooleanField(default=False)
+    allow_share_screen = models.BooleanField(default=True)
+    allow_chat = models.BooleanField(default=True)
+    allow_rename = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
