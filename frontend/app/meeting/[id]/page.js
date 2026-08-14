@@ -14,6 +14,7 @@ import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import Modal from '../../../components/Modal';
 import api, { WS_BASE_URL } from '../../../lib/api';
+import { consumePendingScreenShareStream } from '../../../lib/pendingScreenShare';
 
 export default function MeetingRoomPage() {
   const params = useParams();
@@ -321,13 +322,18 @@ export default function MeetingRoomPage() {
     room.on(RoomEvent.TrackMuted, syncLiveKitParticipants);
     room.on(RoomEvent.TrackUnmuted, syncLiveKitParticipants);
     room.on(RoomEvent.LocalTrackPublished, (publication) => {
-      if (publication.source === Track.Source.Camera && videoRef.current) {
+      if (
+        (publication.source === Track.Source.Camera || publication.source === Track.Source.ScreenShare)
+        && videoRef.current
+      ) {
         publication.videoTrack?.attach(videoRef.current);
       }
     });
     room.on(RoomEvent.LocalTrackUnpublished, (publication) => {
       if (publication.source === Track.Source.ScreenShare && !cancelled) {
         setIsSharingScreen(false);
+        const cameraTrack = room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack;
+        if (cameraTrack && videoRef.current) cameraTrack.attach(videoRef.current);
       }
     });
     room.on(RoomEvent.DataReceived, async (payload) => {
@@ -411,10 +417,20 @@ export default function MeetingRoomPage() {
         if (wantsVideo && videoRef.current) {
           room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach(videoRef.current);
         }
-        if (sessionStorage.getItem('zoom_clone_pre_share') === 'true') {
+        const pendingScreenShare = consumePendingScreenShareStream();
+        if (pendingScreenShare?.getVideoTracks()[0]) {
           sessionStorage.removeItem('zoom_clone_pre_share');
-          await room.localParticipant.setScreenShareEnabled(true);
+          const screenTrack = pendingScreenShare.getVideoTracks()[0];
+          screenTrack.onended = () => setIsSharingScreen(false);
+          await room.localParticipant.publishTrack(screenTrack, {
+            source: Track.Source.ScreenShare,
+            simulcast: true,
+          });
           if (!cancelled) setIsSharingScreen(true);
+        } else if (sessionStorage.getItem('zoom_clone_pre_share') === 'true') {
+          // If a refresh happened between the picker and room connection,
+          // request a new stream from the room's Share Screen control.
+          sessionStorage.removeItem('zoom_clone_pre_share');
         }
         if (!cancelled) {
           setIsAudioOn(wantsAudio);

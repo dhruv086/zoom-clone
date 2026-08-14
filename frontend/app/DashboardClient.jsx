@@ -8,6 +8,7 @@ import Card from '../components/Card';
 import Modal from '../components/Modal';
 import ClockComponent from '../components/Clock';
 import api from '../lib/api';
+import { discardPendingScreenShareStream, setPendingScreenShareStream } from '../lib/pendingScreenShare';
 
 const formatMeetingDate = (dateString) =>
   new Intl.DateTimeFormat('en-US', {
@@ -164,16 +165,28 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
     }
 
     try {
+      // This must happen while handling the button click. Calling it after
+      // navigation is no longer a trusted browser gesture and is rejected.
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+      setPendingScreenShareStream(screenStream);
       const res = await api.get(`/meetings/validate/${mid}/`);
       if (res.data.valid) {
         setIsShareScreenOpen(false);
         setShareId('');
-        // Save share screen pre-request in session storage
+        // Fallback marker for a page refresh during navigation.
         sessionStorage.setItem('zoom_clone_pre_share', 'true');
-        router.push(`/meeting/${res.data.meeting_id}`);
+        router.push(`/meeting/${res.data.id}`);
       }
     } catch (err) {
-      setShareError(err.response?.data?.error || 'Invalid Meeting ID. Please check and try again.');
+      discardPendingScreenShareStream();
+      setShareError(
+        err.name === 'NotAllowedError'
+          ? 'Screen sharing was cancelled or blocked by the browser.'
+          : err.response?.data?.error || 'Invalid Meeting ID. Please check and try again.',
+      );
     } finally {
       setIsShareValidating(false);
     }
