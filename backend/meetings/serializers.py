@@ -1,3 +1,4 @@
+import os
 import random
 from rest_framework import serializers
 from meetings.models import User, Meeting, Participant, ChatMessage
@@ -63,7 +64,8 @@ class MeetingSerializer(serializers.ModelSerializer):
             mid = generate_meeting_id()
         
         validated_data['meeting_id'] = mid
-        validated_data['invite_link'] = f"http://localhost:3000/join?mid={mid}"
+        frontend_url = (os.getenv('FRONTEND_URL') or os.getenv('NEXT_PUBLIC_FRONTEND_URL') or 'http://localhost:3000').rstrip('/')
+        validated_data['invite_link'] = f"{frontend_url}/join?mid={mid}"
 
         # If scheduled_at is null or not provided, mark as instant meeting
         scheduled_at = validated_data.get('scheduled_at')

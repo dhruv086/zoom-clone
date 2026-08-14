@@ -4,10 +4,12 @@ import DashboardClient from './DashboardClient';
 // Ensure this page is rendered dynamically on every request (no cache)
 export const revalidate = 0;
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
 async function fetchUpcomingMeetings() {
   try {
-    const res = await fetch('http://localhost:8000/api/meetings/upcoming/', { 
-      cache: 'no-store' 
+    const res = await fetch(`${API_BASE_URL}/meetings/upcoming/`, {
+      cache: 'no-store',
     });
     if (!res.ok) {
       throw new Error('Failed to fetch upcoming meetings');
@@ -21,8 +23,8 @@ async function fetchUpcomingMeetings() {
 
 async function fetchRecentMeetings() {
   try {
-    const res = await fetch('http://localhost:8000/api/meetings/recent/', { 
-      cache: 'no-store' 
+    const res = await fetch(`${API_BASE_URL}/meetings/recent/`, {
+      cache: 'no-store',
     });
     if (!res.ok) {
       throw new Error('Failed to fetch recent meetings');

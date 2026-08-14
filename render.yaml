@@ -18,6 +18,8 @@ services:
         value: ".onrender.com,localhost,127.0.0.1"
       - key: CORS_ALLOWED_ORIGINS
         value: "https://zoom-frontend.onrender.com,http://localhost:3000"
+      - key: FRONTEND_URL
+        value: "https://zoom-frontend.onrender.com"
       - key: LIVEKIT_API_KEY
         sync: false
       - key: LIVEKIT_API_SECRET
@@ -42,3 +44,5 @@ services:
         value: "https://zoom-backend.onrender.com/api"
       - key: NEXT_PUBLIC_WS_URL
         value: "wss://zoom-backend.onrender.com"
+      - key: NEXT_PUBLIC_FRONTEND_URL
+        value: "https://zoom-frontend.onrender.com"
