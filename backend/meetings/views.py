@@ -140,11 +140,35 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def livekit_token(self, request, pk=None):
         meeting = self.get_object()
-        display_name = request.data.get('display_name', 'Guest User')
-        is_host = request.data.get('is_host', False)
+        if not meeting.is_active:
+            return Response({'detail': 'This meeting has ended.'}, status=status.HTTP_410_GONE)
+
+        display_name = str(request.data.get('display_name', 'Guest User')).strip()[:100] or 'Guest User'
+        participant_id = request.data.get('participant_id')
+        participant = None
+        if participant_id and str(participant_id).isdigit():
+            participant = Participant.objects.filter(
+                id=participant_id,
+                meeting=meeting,
+                left_at__isnull=True,
+            ).first()
+
+        # A direct room link can reach this endpoint without the pre-join page.
+        # Create the participant here so it always has a stable LiveKit identity.
+        if participant is None:
+            participant = Participant.objects.create(
+                meeting=meeting,
+                display_name=display_name,
+                is_host=display_name == meeting.host.display_name,
+                is_video_on=False,
+                is_audio_on=False,
+            )
+        elif participant.display_name != display_name:
+            participant.display_name = display_name
+            participant.save(update_fields=['display_name'])
 
         room_name = str(meeting.meeting_id)
-        user_name = display_name.strip() or 'Guest User'
+        user_name = participant.display_name
         api_key = os.getenv('LIVEKIT_API_KEY', 'devkey')
         api_secret = os.getenv('LIVEKIT_API_SECRET', 'secret')
         ws_url = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')
@@ -152,7 +176,9 @@ class MeetingViewSet(viewsets.ModelViewSet):
         now = datetime.now(dt_timezone.utc)
         payload = {
             'iss': api_key,
-            'sub': f"{meeting.id}:{user_name}",
+            # LiveKit identities must be unique within a room.  A database
+            # participant id remains unique even when guests use the same name.
+            'sub': str(participant.id),
             'iat': int(now.timestamp()),
             'exp': int((now + timedelta(hours=4)).timestamp()),
             'nbf': int(now.timestamp()),
@@ -166,7 +192,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
                 'canPublishData': True,
             },
         }
-        if is_host:
+        if participant.is_host:
             payload['video']['roomAdmin'] = True
 
         token = jwt.encode(payload, api_secret, algorithm='HS256')
@@ -176,6 +202,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             'room_name': room_name,
             'ws_url': ws_url,
             'display_name': user_name,
+            'participant': ParticipantSerializer(participant).data,
         }, status=status.HTTP_200_OK)
 
 

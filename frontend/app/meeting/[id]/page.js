@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import {
+  Room, RoomEvent, Track,
+} from 'livekit-client';
 import { 
   Mic, MicOff, Video, VideoOff, Users, MessageSquare, PhoneOff, 
   ShieldAlert, VideoIcon, Smile, Settings, Shield, Grid, Tv, 
@@ -66,14 +69,12 @@ export default function MeetingRoomPage() {
   const [remoteStreams, setRemoteStreams] = useState({});
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [roomToken, setRoomToken] = useState('');
-  const [livekitUrl, setLivekitUrl] = useState('ws://localhost:7880');
+  const [livekitUrl, setLivekitUrl] = useState(process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880');
 
   const videoRef = useRef(null);
-  const streamRef = useRef(null);
+  const roomRef = useRef(null);
   const chatBottomRef = useRef(null);
   const socketRef = useRef(null);
-  const peerConnectionsRef = useRef({});
-  const mediaPermissionErrorRef = useRef(false);
 
   // 1. Fetch pre-join configurations from sessionStorage
   useEffect(() => {
@@ -106,88 +107,111 @@ export default function MeetingRoomPage() {
       sessionStorage.removeItem('zoom_clone_pre_share');
       handleToggleScreenShare();
     }
+  // The pre-share flag is consumed only on entry; later control changes must not retrigger it.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
 
-  // 2. Camera stream manager
-  useEffect(() => {
-    const startCamera = async () => {
-      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        return;
-      }
-
-      if (mediaPermissionErrorRef.current) {
-        return;
-      }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-
-      if (isVideoOn && !isSharingScreen) {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: isAudioOn,
-          });
-          streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-          mediaPermissionErrorRef.current = false;
-        } catch (err) {
-          mediaPermissionErrorRef.current = true;
-          console.warn('Could not grab media streams:', err);
-          setIsVideoOn(false);
-          setIsAudioOn(false);
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach((track) => track.stop());
-            streamRef.current = null;
-          }
-        }
-      }
-    };
-
-    startCamera();
-
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, [isVideoOn, isSharingScreen, isAudioOn]);
-
-  // 3. Screen sharing simulation
+  // 2. LiveKit owns media capture and publishing. This avoids opening a
+  // second local stream that competes with the tracks published to the room.
   const handleToggleScreenShare = async () => {
     if (!allowShareScreen && displayName !== hostName) {
       alert("Host has disabled screen sharing for participants.");
       return;
     }
 
-    if (!isSharingScreen) {
-      try {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        streamRef.current = screenStream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = screenStream;
-        }
-        setIsSharingScreen(true);
-        // Bind onended to restore camera
-        screenStream.getVideoTracks()[0].onended = () => {
-          setIsSharingScreen(false);
-        };
-      } catch (err) {
-        console.warn('Screen share canceled', err);
-      }
-    } else {
-      setIsSharingScreen(false);
+    try {
+      await roomRef.current?.localParticipant.setScreenShareEnabled(!isSharingScreen);
+      setIsSharingScreen((sharing) => !sharing);
+    } catch (err) {
+      console.warn('Screen share canceled or unavailable', err);
     }
   };
 
-  // 4. Poll database participants status and messages
+  // 4. WebSocket setup for real-time participant updates and signaling
   useEffect(() => {
-    const fetchStatus = async () => {
+    if (!meetingId || !displayName) return;
+
+    const wsUrl = `${WS_BASE_URL}/ws/meetings/${meetingId}/`;
+    const ws = new WebSocket(wsUrl);
+
+    const handleWebSocketMessage = (event) => {
+      const data = JSON.parse(event.data);
+      const type = data.type;
+
+      if (type === 'existing_participants') {
+        // Initial list of existing participants
+        const existingParticipants = data.participants || [];
+        const otherParticipants = existingParticipants.filter(
+          (p) => p.displayName !== displayName
+        );
+        setActiveParticipants(
+          otherParticipants.map((p) => ({
+            id: p.participantId,
+            display_name: p.displayName,
+            is_audio_on: true,
+            is_video_on: true,
+            is_host: false,
+          }))
+        );
+      } else if (type === 'peer.joined') {
+        // New participant joined
+        const newParticipant = {
+          id: data.participantId,
+          display_name: data.displayName,
+          is_audio_on: true,
+          is_video_on: true,
+          is_host: false,
+        };
+        setActiveParticipants((prev) => [...prev, newParticipant]);
+      } else if (type === 'peer.left') {
+        // Participant left
+        setActiveParticipants((prev) =>
+          prev.filter((p) => p.display_name !== data.displayName)
+        );
+      } else if (type === 'chat_message') {
+        // New chat message
+        setChatMessages((prev) => [...prev, data.message]);
+      } else if (type === 'participant_state_changed') {
+        // Participant audio/video state changed
+        setActiveParticipants((prev) =>
+          prev.map((p) =>
+            p.id === data.participantId
+              ? {
+                  ...p,
+                  is_audio_on: data.is_audio_on !== undefined ? data.is_audio_on : p.is_audio_on,
+                  is_video_on: data.is_video_on !== undefined ? data.is_video_on : p.is_video_on,
+                }
+              : p
+          )
+        );
+      }
+    };
+
+    ws.onopen = () => {
+      ws.send(
+        JSON.stringify({
+          type: 'join',
+          participantId: selfParticipantId || `${displayName}-${Date.now()}`,
+          displayName,
+        })
+      );
+    };
+
+    ws.onmessage = handleWebSocketMessage;
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+
+    socketRef.current = ws;
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [meetingId, displayName, selfParticipantId]);
+
+  // Fetch initial participant data on mount
+  useEffect(() => {
+    const fetchInitialStatus = async () => {
       try {
         const res = await api.get(`/meetings/${meetingId}/`);
         const active = res.data.participants.filter((p) => p.left_at === null);
@@ -200,58 +224,43 @@ export default function MeetingRoomPage() {
 
         const otherParticipants = active.filter((p) => p.display_name !== displayName);
         setActiveParticipants(otherParticipants);
-
-        const audioFromDb = currentParticipant ? currentParticipant.is_audio_on : isAudioOn;
-        const videoFromDb = currentParticipant ? currentParticipant.is_video_on : isVideoOn;
-
-        if (!mediaPermissionErrorRef.current) {
-          setIsAudioOn(audioFromDb);
-          setIsVideoOn(videoFromDb);
-        }
-
-        if (isMutedAll && audioFromDb) {
-          setIsMutedAll(false);
-        }
-
-        if (streamRef.current) {
-          streamRef.current.getAudioTracks().forEach((track) => {
-            track.enabled = audioFromDb;
-          });
-        }
-      } catch (err) {}
+      } catch (err) {
+        console.error('Failed to fetch initial participant status', err);
+      }
     };
 
     const fetchChats = async () => {
       try {
         const res = await api.get(`/chat/?meeting_id=${meetingId}`);
         setChatMessages(res.data);
-      } catch (err) {}
+      } catch (err) {
+        console.error('Failed to fetch chat messages', err);
+      }
     };
 
-    fetchStatus();
-    fetchChats();
-
-    const interval = setInterval(() => {
-      fetchStatus();
+    if (meetingId && displayName) {
+      fetchInitialStatus();
       fetchChats();
-    }, 3000);
-
-    return () => clearInterval(interval);
+    }
   }, [meetingId, displayName]);
 
   useEffect(() => {
     const createLivekitToken = async () => {
-      if (!meetingId || !selfParticipantId) return;
+      if (!meetingId) return;
 
       try {
         const payload = {
           display_name: displayName,
-          is_host: displayName === hostName,
+          participant_id: selfParticipantId || sessionStorage.getItem('zoom_clone_participant_id'),
         };
 
         const res = await api.post(`/meetings/${meetingId}/livekit_token/`, payload);
         setRoomToken(res.data.token);
-        setLivekitUrl(res.data.ws_url || 'ws://localhost:7880');
+        if (res.data.participant?.id) {
+          setSelfParticipantId(res.data.participant.id);
+          sessionStorage.setItem('zoom_clone_participant_id', String(res.data.participant.id));
+        }
+        setLivekitUrl(res.data.ws_url || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880');
         setConnectionStatus('ready');
       } catch (err) {
         console.error('Failed to create LiveKit token', err);
@@ -260,7 +269,128 @@ export default function MeetingRoomPage() {
     };
 
     createLivekitToken();
-  }, [meetingId, selfParticipantId, displayName, hostName]);
+  }, [meetingId, selfParticipantId, displayName]);
+
+  useEffect(() => {
+    if (!roomToken || !livekitUrl) return;
+
+    let cancelled = false;
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      publishDefaults: {
+        simulcast: true,
+      },
+    });
+    roomRef.current = room;
+
+    const syncLiveKitParticipants = () => {
+      setActiveParticipants(Array.from(room.remoteParticipants.values()).map((participant) => ({
+        id: participant.identity,
+        display_name: participant.name || participant.identity,
+        is_audio_on: !participant.getTrackPublication(Track.Source.Microphone)?.isMuted,
+        is_video_on: !participant.getTrackPublication(Track.Source.Camera)?.isMuted,
+        is_host: participant.name === hostName,
+      })));
+    };
+
+    room.on(RoomEvent.Connected, () => {
+      if (!cancelled) setConnectionStatus('connected');
+    });
+
+    room.on(RoomEvent.Disconnected, () => {
+      if (!cancelled) setConnectionStatus('disconnected');
+    });
+
+    room.on(RoomEvent.Connecting, () => {
+      if (!cancelled) setConnectionStatus('connecting');
+    });
+    room.on(RoomEvent.ParticipantConnected, syncLiveKitParticipants);
+    room.on(RoomEvent.ParticipantDisconnected, syncLiveKitParticipants);
+    room.on(RoomEvent.TrackSubscribed, syncLiveKitParticipants);
+    room.on(RoomEvent.TrackUnsubscribed, syncLiveKitParticipants);
+    room.on(RoomEvent.TrackMuted, syncLiveKitParticipants);
+    room.on(RoomEvent.TrackUnmuted, syncLiveKitParticipants);
+
+    room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+      console.log(`Track subscribed from ${participant.name}:`, track.kind);
+
+      if (track.kind === Track.Kind.Video) {
+        // Create or get existing MediaStream for this participant
+        const mediaStream = new MediaStream();
+        const videoTrack = track.mediaStreamTrack;
+
+        if (videoTrack) {
+          mediaStream.addTrack(videoTrack);
+
+          setRemoteStreams((prev) => {
+            const existing = prev[participant.identity];
+            existing?.getAudioTracks().forEach((audioTrack) => mediaStream.addTrack(audioTrack));
+            return { ...prev, [participant.identity]: mediaStream };
+          });
+        }
+      } else if (track.kind === Track.Kind.Audio) {
+        // Get existing MediaStream or create new one
+        setRemoteStreams((prev) => {
+          const existing = prev[participant.identity] || new MediaStream();
+          const audioTrack = track.mediaStreamTrack;
+
+          if (audioTrack && !existing.getAudioTracks().some(t => t.id === audioTrack.id)) {
+            existing.addTrack(audioTrack);
+          }
+
+          return {
+            ...prev,
+            [participant.identity]: existing,
+          };
+        });
+      }
+    });
+
+    room.on(RoomEvent.TrackUnsubscribed, (_track, _publication, participant) => {
+      setRemoteStreams((prev) => {
+        const next = { ...prev };
+        delete next[participant.identity];
+        return next;
+      });
+    });
+
+    const connectRoom = async () => {
+      try {
+        console.log('Connecting to LiveKit room:', livekitUrl);
+        await room.connect(livekitUrl, roomToken, { autoSubscribe: true });
+        syncLiveKitParticipants();
+        console.log('Connected to LiveKit room');
+
+        const wantsAudio = sessionStorage.getItem('zoom_clone_audio') === 'true';
+        const wantsVideo = sessionStorage.getItem('zoom_clone_video') === 'true';
+        await room.localParticipant.setMicrophoneEnabled(wantsAudio);
+        await room.localParticipant.setCameraEnabled(wantsVideo);
+        if (wantsVideo && videoRef.current) {
+          room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach(videoRef.current);
+        }
+        if (!cancelled) {
+          setIsAudioOn(wantsAudio);
+          setIsVideoOn(wantsVideo);
+        }
+
+        if (!cancelled) {
+          setConnectionStatus('connected');
+        }
+      } catch (err) {
+        console.error('LiveKit room connection failed', err);
+        if (!cancelled) setConnectionStatus('failed');
+      }
+    };
+
+    connectRoom();
+
+    return () => {
+      cancelled = true;
+      room.disconnect();
+      roomRef.current = null;
+    };
+  }, [roomToken, livekitUrl, hostName]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -292,13 +422,11 @@ export default function MeetingRoomPage() {
 
   // Toggle Mute Audio
   const handleToggleAudio = async () => {
-    mediaPermissionErrorRef.current = false;
     const nextState = !isAudioOn;
     setIsAudioOn(nextState);
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = nextState;
-      });
+
+    if (roomRef.current?.localParticipant) {
+      roomRef.current.localParticipant.setMicrophoneEnabled(nextState);
     }
 
     if (selfParticipantId) {
@@ -314,13 +442,11 @@ export default function MeetingRoomPage() {
 
   // Toggle Video Stop
   const handleToggleVideo = async () => {
-    mediaPermissionErrorRef.current = false;
     const nextState = !isVideoOn;
     setIsVideoOn(nextState);
-    if (streamRef.current) {
-      streamRef.current.getVideoTracks().forEach((track) => {
-        track.enabled = nextState;
-      });
+
+    if (roomRef.current?.localParticipant) {
+      roomRef.current.localParticipant.setCameraEnabled(nextState);
     }
 
     if (selfParticipantId) {
@@ -341,9 +467,7 @@ export default function MeetingRoomPage() {
         display_name: displayName,
       });
     } catch (err) {}
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
+    roomRef.current?.disconnect();
     router.push('/');
   };
 
@@ -352,9 +476,7 @@ export default function MeetingRoomPage() {
     try {
       await api.post(`/meetings/${meetingId}/end/`);
     } catch (err) {}
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
+    roomRef.current?.disconnect();
     router.push('/');
   };
 
@@ -372,11 +494,7 @@ export default function MeetingRoomPage() {
     setIsMutedAll(true);
     setIsAudioOn(false);
     setActiveParticipants((prev) => prev.map((participant) => ({ ...participant, is_audio_on: false })));
-    if (streamRef.current) {
-      streamRef.current.getAudioTracks().forEach((track) => {
-        track.enabled = false;
-      });
-    }
+    await roomRef.current?.localParticipant.setMicrophoneEnabled(false);
 
     if (selfParticipantId) {
       try {
@@ -508,21 +626,8 @@ export default function MeetingRoomPage() {
 
       {/* Body panel split: Video grid vs Sidebar */}
       <div className="flex-1 flex overflow-hidden w-full h-full">
-        {roomToken ? (
-          <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
-            <div className="text-center text-sm text-gray-300">
-              LiveKit session ready for room {meetingTitle}.<br />
-              Connection status: {connectionStatus}
-            </div>
-          </div>
-        ) : (
-          <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
-            <div className="text-center text-sm text-gray-300">Connecting to meeting room...</div>
-          </div>
-        )}
-        
         {/* Video Area containing Speaker View / Gallery View */}
-        <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full hidden">
+        <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
           
           {viewMode === 'gallery' ? (
             /* 1. GALLERY VIEW - Standard equal grid */
@@ -556,58 +661,54 @@ export default function MeetingRoomPage() {
                 </div>
               </div>
 
-              {/* Other active participants */}
-              {Object.entries(remoteStreams).map(([peerId, stream]) => (
-                <div
-                  key={peerId}
-                  className="relative rounded-3xl overflow-hidden bg-gray-900 border border-white/5 shadow-xl flex items-center justify-center group"
-                >
-                  <video
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover"
-                    ref={(node) => {
-                      if (node) {
-                        node.srcObject = stream;
-                      }
-                    }}
-                  />
-                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
-                    <Mic size={14} className="text-green-500" />
-                    <span>Remote Peer</span>
-                  </div>
-                </div>
-              ))}
-
-              {activeParticipants.map((p) => (
-                <div
-                  key={p.id}
-                  className="relative rounded-3xl overflow-hidden bg-gray-900 border border-white/5 shadow-xl flex items-center justify-center group"
-                >
-                  {p.is_video_on ? (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-900/35 to-slate-900 flex items-center justify-center">
-                      <span className="text-xs text-gray-400 font-medium">Remote Video Feed Active</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 text-3xl font-bold select-none shadow">
-                        {p.display_name.charAt(0).toUpperCase()}
+              {/* Other active participants with LiveKit streams */}
+              {activeParticipants.map((participant) => {
+                const remoteStream = remoteStreams[String(participant.id)];
+                return (
+                  <div
+                    key={participant.id}
+                    className="relative rounded-3xl overflow-hidden bg-gray-900 border border-white/5 shadow-xl flex items-center justify-center group"
+                  >
+                    {remoteStream ? (
+                      <>
+                      <video
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                        ref={(node) => {
+                          if (node && node.srcObject !== remoteStream) {
+                            node.srcObject = remoteStream;
+                          }
+                        }}
+                      />
+                      <audio
+                        autoPlay
+                        ref={(node) => {
+                          if (node && node.srcObject !== remoteStream) node.srcObject = remoteStream;
+                        }}
+                      />
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="w-20 h-20 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 text-3xl font-bold select-none shadow">
+                          {participant.display_name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-semibold text-gray-400">{participant.display_name}</span>
                       </div>
-                      <span className="text-sm font-semibold text-gray-400">{p.display_name}</span>
+                    )}
+                    <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
+                      {participant.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                      <span>{participant.display_name}</span>
                     </div>
-                  )}
-                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
-                    {p.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
-                    <span>{p.display_name}</span>
+                    {participant.is_host && (
+                      <span className="absolute top-4 right-4 bg-[#0E71EB]/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full select-none">
+                        Host
+                      </span>
+                    )}
                   </div>
-                  {p.is_host && (
-                    <span className="absolute top-4 right-4 bg-[#0E71EB]/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full select-none">
-                      Host
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             /* 2. SPEAKER VIEW - Large speaker, small strip at the top */
@@ -636,11 +737,29 @@ export default function MeetingRoomPage() {
 
                 {activeParticipants.map((p) => {
                   if (!speakerTarget.isSelf && speakerTarget.data.id === p.id) return null;
+                  const remoteStream = remoteStreams[String(p.id)];
                   return (
                     <div key={p.id} className="w-40 aspect-video rounded-xl bg-gray-900 border border-white/5 relative overflow-hidden flex items-center justify-center shrink-0 shadow-md">
-                      <div className="w-8 h-8 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center text-xs font-bold">
-                        {p.display_name.charAt(0).toUpperCase()}
-                      </div>
+                      {remoteStream ? (
+                        <>
+                        <video
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover"
+                          ref={(node) => {
+                            if (node && node.srcObject !== remoteStream) {
+                              node.srcObject = remoteStream;
+                            }
+                          }}
+                        />
+                        <audio autoPlay ref={(node) => { if (node && node.srcObject !== remoteStream) node.srcObject = remoteStream; }} />
+                        </>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-800 text-gray-400 flex items-center justify-center text-xs font-bold">
+                          {p.display_name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <span className="absolute bottom-1.5 left-1.5 bg-black/75 px-1.5 py-0.5 rounded text-[9px] truncate max-w-[80px]">
                         {p.display_name}
                       </span>
@@ -669,12 +788,32 @@ export default function MeetingRoomPage() {
                     </div>
                   )
                 ) : (
-                  <div className="text-center space-y-4">
-                    <div className="w-32 h-32 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 text-5xl font-black shadow-lg mx-auto">
-                      {speakerTarget.data.display_name.charAt(0).toUpperCase()}
-                    </div>
-                    <p className="text-lg font-bold text-gray-400">{speakerTarget.data.display_name}</p>
-                  </div>
+                  (() => {
+                    const speakerRemoteStream = remoteStreams[String(speakerTarget.data.id)];
+                    return speakerRemoteStream ? (
+                      <>
+                      <video
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                        ref={(node) => {
+                          if (node && node.srcObject !== speakerRemoteStream) {
+                            node.srcObject = speakerRemoteStream;
+                          }
+                        }}
+                      />
+                      <audio autoPlay ref={(node) => { if (node && node.srcObject !== speakerRemoteStream) node.srcObject = speakerRemoteStream; }} />
+                      </>
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <div className="w-32 h-32 rounded-full bg-gray-800 flex items-center justify-center text-gray-300 text-5xl font-black shadow-lg mx-auto">
+                          {speakerTarget.data.display_name.charAt(0).toUpperCase()}
+                        </div>
+                        <p className="text-lg font-bold text-gray-400">{speakerTarget.data.display_name}</p>
+                      </div>
+                    );
+                  })()
                 )}
 
                 <div className="absolute bottom-6 left-6 bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center space-x-2 border border-white/5 text-sm">

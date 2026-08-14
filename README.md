@@ -192,6 +192,23 @@ A Render deployment blueprint is included in [render.yaml](render.yaml). It conf
 
 Before deployment, replace the placeholder LiveKit values with your real credentials and update the frontend/backend URLs for the deployed hosts.
 
+### Render deployment
+
+The included blueprint deploys the frontend, the Django ASGI service, and a
+Render Postgres database. After syncing it in Render, add these backend
+environment variables in the Render dashboard:
+
+```env
+LIVEKIT_API_KEY=your-livekit-api-key
+LIVEKIT_API_SECRET=your-livekit-api-secret
+LIVEKIT_WS_URL=wss://your-livekit-project.livekit.cloud
+```
+
+Use a hosted LiveKit project (such as LiveKit Cloud) for production media.
+Render web services do not expose the UDP transport that a self-hosted LiveKit
+server needs. The names and URLs in `render.yaml` must match your Render service
+URLs if you rename either web service.
+
 ---
 
 ## Notes

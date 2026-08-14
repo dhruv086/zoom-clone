@@ -3,8 +3,10 @@ services:
     name: zoom-backend
     runtime: python
     plan: free
-    buildCommand: "cd backend && pip install -r requirements.txt && python manage.py collectstatic --noinput"
-    startCommand: "cd backend && gunicorn zoom_clone.wsgi:application --bind 0.0.0.0:$PORT"
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    # Render's free web-service plan does not support preDeployCommand.
+    startCommand: "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p $PORT zoom_clone.asgi:application"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.0"
@@ -15,9 +17,13 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: ALLOWED_HOSTS
-        value: ".onrender.com,localhost,127.0.0.1"
+        value: ".onrender.com"
+      - key: CORS_ALLOW_ALL_ORIGINS
+        value: "False"
       - key: CORS_ALLOWED_ORIGINS
-        value: "https://zoom-frontend-znn0.onrender.com,http://localhost:3000"
+        value: "https://zoom-frontend-znn0.onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://zoom-frontend-znn0.onrender.com"
       - key: FRONTEND_URL
         value: "https://zoom-frontend-znn0.onrender.com"
       - key: LIVEKIT_API_KEY
@@ -25,18 +31,19 @@ services:
       - key: LIVEKIT_API_SECRET
         sync: false
       - key: LIVEKIT_WS_URL
-        value: "wss://your-livekit-server.example.com"
-      - key: NEXT_PUBLIC_API_URL
-        value: "https://zoom-backend-znn0.onrender.com/api"
-      - key: NEXT_PUBLIC_WS_URL
-        value: "wss://zoom-backend-znn0.onrender.com"
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: zoom-postgres
+          property: connectionString
 
   - type: web
     name: zoom-frontend
     runtime: node
     plan: free
-    buildCommand: "cd frontend && npm install && npm run build"
-    startCommand: "cd frontend && npm run start"
+    rootDir: frontend
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm run start"
     envVars:
       - key: NODE_VERSION
         value: "20.11.1"
@@ -46,3 +53,9 @@ services:
         value: "wss://zoom-backend-znn0.onrender.com"
       - key: NEXT_PUBLIC_FRONTEND_URL
         value: "https://zoom-frontend-znn0.onrender.com"
+
+databases:
+  - name: zoom-postgres
+    plan: free
+    databaseName: zoom_clone
+    user: zoom_clone
