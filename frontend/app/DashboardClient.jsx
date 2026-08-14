@@ -110,6 +110,7 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
         title: 'Instant Meeting',
         description: 'Instant meeting started from the Web Dashboard.',
       });
+      sessionStorage.setItem(`zoom_clone_host_key_${res.data.id}`, res.data.host_access_token);
       router.push(`/join?mid=${res.data.meeting_id}`);
     } catch (err) {
       console.error('Failed to create instant meeting', err);
@@ -195,12 +196,13 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
     const scheduledAt = new Date(`${date}T${time}`).toISOString();
 
     try {
-      await api.post('/meetings/', {
+      const response = await api.post('/meetings/', {
         title,
         description,
         scheduled_at: scheduledAt,
         duration_minutes: parseInt(duration),
       });
+      sessionStorage.setItem(`zoom_clone_host_key_${response.data.id}`, response.data.host_access_token);
 
       setIsScheduleOpen(false);
       setScheduleData({

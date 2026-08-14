@@ -42,9 +42,18 @@ class MeetingParticipantAPITests(TestCase):
 
     def test_mute_all_turns_off_all_active_participants(self):
         url = reverse('meeting-mute-all', kwargs={'pk': self.meeting.pk})
-        response = self.client.post(url, format='json')
+        response = self.client.post(url, {
+            'participant_id': self.host_participant.id,
+            'host_access_token': str(self.meeting.host_access_token),
+        }, format='json')
 
         self.assertEqual(response.status_code, 200)
         self.meeting.participants.filter(left_at__isnull=True).update()
         for participant in self.meeting.participants.filter(left_at__isnull=True):
             self.assertFalse(participant.is_audio_on)
+
+    def test_non_host_cannot_mute_all(self):
+        url = reverse('meeting-mute-all', kwargs={'pk': self.meeting.pk})
+        response = self.client.post(url, {'participant_id': self.other_participant.id}, format='json')
+
+        self.assertEqual(response.status_code, 403)

@@ -127,6 +127,7 @@ function PreJoinPage() {
       const joinRes = await api.post(`/meetings/${meetingInfo.id}/join/`, {
         display_name: displayName.trim() || 'Guest User',
         is_host: false,
+        host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingInfo.id}`),
         is_video_on: isVideoOn,
         is_audio_on: isAudioOn,
       });

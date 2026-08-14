@@ -26,6 +26,7 @@ class Meeting(models.Model):
     In Django: models.ForeignKey(User, on_delete=models.CASCADE)
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    host_access_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     meeting_id = models.CharField(max_length=12, unique=True) # format: XXX-XXX-XXXX
     title = models.CharField(max_length=200)
     description = models.TextField(null=True, blank=True)

@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import timedelta, datetime, timezone as dt_timezone
 
 import jwt
@@ -9,6 +10,10 @@ from rest_framework.response import Response
 
 from meetings.models import Meeting, Participant, User, ChatMessage
 from meetings.serializers import MeetingSerializer, ParticipantSerializer, UserSerializer, ChatMessageSerializer
+
+
+def has_host_access(meeting, supplied_token):
+    return bool(supplied_token) and secrets.compare_digest(str(meeting.host_access_token), str(supplied_token))
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -24,6 +29,14 @@ class MeetingViewSet(viewsets.ModelViewSet):
     """
     queryset = Meeting.objects.all().order_by('-created_at')
     serializer_class = MeetingSerializer
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        meeting = Meeting.objects.get(pk=response.data['id'])
+        # This secret is returned only when the meeting is created. The client
+        # stores it in sessionStorage and uses it for host-only actions.
+        response.data['host_access_token'] = str(meeting.host_access_token)
+        return response
 
     # GET /api/meetings/upcoming/
     @action(detail=False, methods=['get'])
@@ -72,7 +85,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
     def join(self, request, pk=None):
         meeting = self.get_object()
         display_name = request.data.get('display_name', 'Guest User')
-        is_host = request.data.get('is_host', False)
+        is_host = has_host_access(meeting, request.data.get('host_access_token'))
         is_video_on = request.data.get('is_video_on', True)
         is_audio_on = request.data.get('is_audio_on', True)
 
@@ -118,6 +131,12 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def end(self, request, pk=None):
         meeting = self.get_object()
+        participant_id = request.data.get('participant_id')
+        is_host = has_host_access(meeting, request.data.get('host_access_token')) and Participant.objects.filter(
+            id=participant_id, meeting=meeting, left_at__isnull=True, is_host=True
+        ).exists()
+        if not is_host:
+            return Response({'detail': 'Only the host can end this meeting.'}, status=status.HTTP_403_FORBIDDEN)
         meeting.is_active = False
         meeting.save()
         
@@ -129,6 +148,12 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def mute_all(self, request, pk=None):
         meeting = self.get_object()
+        participant_id = request.data.get('participant_id')
+        is_host = has_host_access(meeting, request.data.get('host_access_token')) and Participant.objects.filter(
+            id=participant_id, meeting=meeting, left_at__isnull=True, is_host=True
+        ).exists()
+        if not is_host:
+            return Response({'detail': 'Only the host can mute everyone.'}, status=status.HTTP_403_FORBIDDEN)
         queryset = Participant.objects.filter(meeting=meeting, left_at__isnull=True)
         queryset.update(is_audio_on=False)
 
@@ -159,7 +184,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
             participant = Participant.objects.create(
                 meeting=meeting,
                 display_name=display_name,
-                is_host=display_name == meeting.host.display_name,
+                is_host=has_host_access(meeting, request.data.get('host_access_token')),
                 is_video_on=False,
                 is_audio_on=False,
             )

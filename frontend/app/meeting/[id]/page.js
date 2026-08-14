@@ -29,6 +29,7 @@ export default function MeetingRoomPage() {
   const [isAudioOn, setIsAudioOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [selfParticipantId, setSelfParticipantId] = useState(null);
+  const [isHost, setIsHost] = useState(false);
   const [isMutedAll, setIsMutedAll] = useState(false);
   const [muteNotice, setMuteNotice] = useState('');
 
@@ -40,6 +41,7 @@ export default function MeetingRoomPage() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
+  const [isReactionsOpen, setIsReactionsOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
   
   const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'speaker'
@@ -74,7 +76,6 @@ export default function MeetingRoomPage() {
   const videoRef = useRef(null);
   const roomRef = useRef(null);
   const chatBottomRef = useRef(null);
-  const socketRef = useRef(null);
 
   // 1. Fetch pre-join configurations from sessionStorage
   useEffect(() => {
@@ -104,8 +105,9 @@ export default function MeetingRoomPage() {
     // Trigger instant pre-share if redirected from dashboard Share Screen card
     const preShareActive = sessionStorage.getItem('zoom_clone_pre_share') === 'true';
     if (preShareActive) {
-      sessionStorage.removeItem('zoom_clone_pre_share');
-      handleToggleScreenShare();
+      // The actual share request runs only after LiveKit has connected.
+      // Calling getDisplayMedia before then was the reason dashboard sharing
+      // appeared to do nothing.
     }
   // The pre-share flag is consumed only on entry; later control changes must not retrigger it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,9 +121,11 @@ export default function MeetingRoomPage() {
       return;
     }
 
+    if (!roomRef.current?.localParticipant) return;
     try {
-      await roomRef.current?.localParticipant.setScreenShareEnabled(!isSharingScreen);
-      setIsSharingScreen((sharing) => !sharing);
+      const nextState = !isSharingScreen;
+      await roomRef.current.localParticipant.setScreenShareEnabled(nextState);
+      setIsSharingScreen(nextState);
     } catch (err) {
       console.warn('Screen share canceled or unavailable', err);
     }
@@ -130,6 +134,10 @@ export default function MeetingRoomPage() {
   // 4. WebSocket setup for real-time participant updates and signaling
   useEffect(() => {
     if (!meetingId || !displayName) return;
+
+    // LiveKit is the sole source of participant presence. Keeping the legacy
+    // signaling socket active created duplicate tiles for every participant.
+    return undefined;
 
     const wsUrl = `${WS_BASE_URL}/ws/meetings/${meetingId}/`;
     const ws = new WebSocket(wsUrl);
@@ -216,14 +224,13 @@ export default function MeetingRoomPage() {
         const res = await api.get(`/meetings/${meetingId}/`);
         const active = res.data.participants.filter((p) => p.left_at === null);
 
-        const currentParticipant = active.find((p) => p.display_name === displayName) || null;
+        const storedParticipantId = sessionStorage.getItem('zoom_clone_participant_id');
+        const currentParticipant = active.find((p) => String(p.id) === storedParticipantId) || null;
         if (currentParticipant) {
           setSelfParticipantId(currentParticipant.id);
           sessionStorage.setItem('zoom_clone_participant_id', String(currentParticipant.id));
         }
 
-        const otherParticipants = active.filter((p) => p.display_name !== displayName);
-        setActiveParticipants(otherParticipants);
       } catch (err) {
         console.error('Failed to fetch initial participant status', err);
       }
@@ -251,13 +258,15 @@ export default function MeetingRoomPage() {
       try {
         const payload = {
           display_name: displayName,
-          participant_id: selfParticipantId || sessionStorage.getItem('zoom_clone_participant_id'),
+          participant_id: sessionStorage.getItem('zoom_clone_participant_id'),
+          host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
         };
 
         const res = await api.post(`/meetings/${meetingId}/livekit_token/`, payload);
         setRoomToken(res.data.token);
         if (res.data.participant?.id) {
           setSelfParticipantId(res.data.participant.id);
+          setIsHost(Boolean(res.data.participant.is_host));
           sessionStorage.setItem('zoom_clone_participant_id', String(res.data.participant.id));
         }
         setLivekitUrl(res.data.ws_url || process.env.NEXT_PUBLIC_LIVEKIT_URL || 'ws://localhost:7880');
@@ -269,7 +278,7 @@ export default function MeetingRoomPage() {
     };
 
     createLivekitToken();
-  }, [meetingId, selfParticipantId, displayName]);
+  }, [meetingId, displayName]);
 
   useEffect(() => {
     if (!roomToken || !livekitUrl) return;
@@ -311,6 +320,39 @@ export default function MeetingRoomPage() {
     room.on(RoomEvent.TrackUnsubscribed, syncLiveKitParticipants);
     room.on(RoomEvent.TrackMuted, syncLiveKitParticipants);
     room.on(RoomEvent.TrackUnmuted, syncLiveKitParticipants);
+    room.on(RoomEvent.LocalTrackPublished, (publication) => {
+      if (publication.source === Track.Source.Camera && videoRef.current) {
+        publication.videoTrack?.attach(videoRef.current);
+      }
+    });
+    room.on(RoomEvent.LocalTrackUnpublished, (publication) => {
+      if (publication.source === Track.Source.ScreenShare && !cancelled) {
+        setIsSharingScreen(false);
+      }
+    });
+    room.on(RoomEvent.DataReceived, async (payload) => {
+      try {
+        const message = JSON.parse(new TextDecoder().decode(payload));
+        if (message.type === 'chat') {
+          setChatMessages((previous) => previous.some((item) => item.client_id === message.id)
+            ? previous
+            : [...previous, { ...message.message, client_id: message.id }]);
+        } else if (message.type === 'reaction') {
+          setReactions((previous) => [...previous, { id: message.id, emoji: message.emoji }]);
+          setTimeout(() => setReactions((previous) => previous.filter((reaction) => reaction.id !== message.id)), 4000);
+        } else if (message.type === 'mute-all') {
+          await room.localParticipant.setMicrophoneEnabled(false);
+          setIsAudioOn(false);
+          setMuteNotice('The host muted all microphones');
+          setTimeout(() => setMuteNotice(''), 4000);
+        } else if (message.type === 'meeting-ended') {
+          room.disconnect();
+          router.push('/');
+        }
+      } catch (error) {
+        console.warn('Ignoring invalid LiveKit room message', error);
+      }
+    });
 
     room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       console.log(`Track subscribed from ${participant.name}:`, track.kind);
@@ -369,6 +411,11 @@ export default function MeetingRoomPage() {
         if (wantsVideo && videoRef.current) {
           room.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach(videoRef.current);
         }
+        if (sessionStorage.getItem('zoom_clone_pre_share') === 'true') {
+          sessionStorage.removeItem('zoom_clone_pre_share');
+          await room.localParticipant.setScreenShareEnabled(true);
+          if (!cancelled) setIsSharingScreen(true);
+        }
         if (!cancelled) {
           setIsAudioOn(wantsAudio);
           setIsVideoOn(wantsVideo);
@@ -415,9 +462,17 @@ export default function MeetingRoomPage() {
         sender_name: displayName,
         content: newMessage.trim(),
       });
-      setChatMessages((prev) => [...prev, res.data]);
+      const id = crypto.randomUUID();
+      const message = { ...res.data, client_id: id };
+      setChatMessages((prev) => [...prev, message]);
+      await roomRef.current?.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({ type: 'chat', id, message })),
+        { reliable: true },
+      );
       setNewMessage('');
-    } catch (err) {}
+    } catch (err) {
+      console.error('Failed to send chat message', err);
+    }
   };
 
   // Toggle Mute Audio
@@ -473,9 +528,20 @@ export default function MeetingRoomPage() {
 
   // End meeting for all action
   const handleEndAll = async () => {
+    if (!isHost || !selfParticipantId) return;
     try {
-      await api.post(`/meetings/${meetingId}/end/`);
-    } catch (err) {}
+      await api.post(`/meetings/${meetingId}/end/`, {
+        participant_id: selfParticipantId,
+        host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
+      });
+      await roomRef.current?.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({ type: 'meeting-ended' })),
+        { reliable: true },
+      );
+    } catch (err) {
+      console.error('Failed to end meeting', err);
+      return;
+    }
     roomRef.current?.disconnect();
     router.push('/');
   };
@@ -484,6 +550,10 @@ export default function MeetingRoomPage() {
   const triggerReaction = (emoji) => {
     const id = Date.now() + Math.random();
     setReactions((prev) => [...prev, { id, emoji }]);
+    roomRef.current?.localParticipant.publishData(
+      new TextEncoder().encode(JSON.stringify({ type: 'reaction', id, emoji })),
+      { reliable: true },
+    ).catch((err) => console.warn('Failed to send reaction', err));
     setTimeout(() => {
       setReactions((prev) => prev.filter((r) => r.id !== id));
     }, 4000);
@@ -491,6 +561,20 @@ export default function MeetingRoomPage() {
 
   // Host Mute All action
   const handleMuteAll = async () => {
+    if (!isHost || !selfParticipantId) return;
+    try {
+      await api.post(`/meetings/${meetingId}/mute_all/`, {
+        participant_id: selfParticipantId,
+        host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
+      });
+      await roomRef.current?.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({ type: 'mute-all' })),
+        { reliable: true },
+      );
+    } catch (err) {
+      console.error('Failed to mute all participants', err);
+      return;
+    }
     setIsMutedAll(true);
     setIsAudioOn(false);
     setActiveParticipants((prev) => prev.map((participant) => ({ ...participant, is_audio_on: false })));
@@ -502,12 +586,6 @@ export default function MeetingRoomPage() {
       } catch (err) {
         console.error('Failed to sync host mic mute state', err);
       }
-    }
-
-    try {
-      await api.post(`/meetings/${meetingId}/mute_all/`);
-    } catch (err) {
-      console.error('Failed to mute all participants', err);
     }
 
     setMuteNotice('Host has muted all participant microphones');
@@ -902,8 +980,7 @@ export default function MeetingRoomPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Host Tools panel - Always available to mute all */}
-                  <div className="bg-[#1e1e24] p-3 rounded-2xl border border-white/5 flex items-center justify-between">
+                  {isHost && <div className="bg-[#1e1e24] p-3 rounded-2xl border border-white/5 flex items-center justify-between">
                     <span className="text-xs font-semibold text-gray-400">Host Actions</span>
                     <Button
                       variant="secondary"
@@ -912,7 +989,7 @@ export default function MeetingRoomPage() {
                     >
                       Mute All
                     </Button>
-                  </div>
+                  </div>}
 
                   {/* Participants status list */}
                   <div className="space-y-2">
@@ -991,7 +1068,7 @@ export default function MeetingRoomPage() {
         <div className="flex items-center space-x-2 md:space-x-3 relative">
           
           {/* Security Dropdown Menu - Toggles Locks and Permissions */}
-          <div className="relative">
+          {isHost && <div className="relative">
             <button
               onClick={() => { setIsSecurityOpen(!isSecurityOpen); setIsViewDropdownOpen(false); }}
               className={`flex flex-col items-center justify-center p-2 min-w-[64px] rounded-2xl hover:bg-white/10 transition-colors ${
@@ -1069,7 +1146,7 @@ export default function MeetingRoomPage() {
                 </label>
               </div>
             )}
-          </div>
+          </div>}
 
           <button
             onClick={() => { setIsParticipantsOpen(!isParticipantsOpen); setIsChatOpen(false); }}
@@ -1101,7 +1178,7 @@ export default function MeetingRoomPage() {
             }`}
           >
             <VideoIcon size={20} />
-            <span className="text-[10px] mt-1 select-none font-semibold">{isSharingScreen ? 'Sharing' : 'Share Screen'}</span>
+            <span className="text-[10px] mt-1 select-none font-semibold">{isSharingScreen ? 'Stop Sharing' : 'Share Screen'}</span>
           </button>
 
           <button
@@ -1115,16 +1192,16 @@ export default function MeetingRoomPage() {
           </button>
 
           {/* Emoji floating reactions button trigger */}
-          <div className="relative group">
-            <button className="flex flex-col items-center justify-center p-2 min-w-[64px] rounded-2xl hover:bg-white/10 text-gray-300 transition-colors">
+          <div className="relative">
+            <button onClick={() => setIsReactionsOpen((open) => !open)} className="flex flex-col items-center justify-center p-2 min-w-[64px] rounded-2xl hover:bg-white/10 text-gray-300 transition-colors">
               <Smile size={20} />
               <span className="text-[10px] mt-1 select-none font-semibold">Reactions</span>
             </button>
-            <div className="absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-[#1e1e24] border border-white/5 p-2 rounded-full space-x-2 shadow-2xl flex items-center opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all z-50">
+            <div className={`absolute bottom-16 left-1/2 transform -translate-x-1/2 bg-[#1e1e24] border border-white/5 p-2 rounded-full space-x-2 shadow-2xl ${isReactionsOpen ? 'flex items-center' : 'hidden'} z-50`}>
               {['👍', '👏', '❤️', '😂', '🎉'].map((emoji) => (
                 <button
                   key={emoji}
-                  onClick={() => triggerReaction(emoji)}
+                  onClick={() => { triggerReaction(emoji); setIsReactionsOpen(false); }}
                   className="hover:scale-125 transition-transform p-1 focus:outline-none"
                 >
                   {emoji}
@@ -1177,7 +1254,7 @@ export default function MeetingRoomPage() {
               </div>
             </button>
 
-            <button
+            {isHost && <button
               onClick={handleEndAll}
               className="w-full p-4 rounded-xl border border-red-500/30 bg-red-950/30 hover:bg-red-900/40 text-red-400 text-left font-bold text-xs flex items-center justify-between transition-colors"
             >
@@ -1188,7 +1265,7 @@ export default function MeetingRoomPage() {
                   <div className="text-[10px] text-red-300 font-normal">Terminates the call session for every participant.</div>
                 </div>
               </div>
-            </button>
+            </button>}
           </div>
 
           <div className="flex justify-end pt-2">
