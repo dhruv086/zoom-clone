@@ -1,200 +1,213 @@
-# Zoom Web Clone — Fullstack SDE Assignment
+# Zoom Clone — LiveKit-powered Meeting App
 
-A polished Zoom-inspired meeting app built for an SDE evaluation assignment. The project demonstrates a full-stack architecture with a Django/DRF backend, SQLite relational persistence, and a Next.js 14 App Router frontend.
+A full-stack Zoom-inspired meeting application built with Django REST Framework on the backend and Next.js on the frontend. The project is designed as a recruiter-facing demo that combines polished UI, meeting lifecycle flows, and real-time media connectivity using LiveKit.
 
-## Recruiter-ready summary
+## Overview
 
-This project is designed to show end-to-end product thinking in a realistic assignment scope: dashboard-driven meeting management, join flows, participant state tracking, scheduling, chat, and a Zoom-like meeting room interface. It is not a production-scale WebRTC platform, but it is a strong demonstration of full-stack problem solving, API design, state handling, and UI polish within assignment constraints.
+This app includes:
 
-## Why this is a strong assignment submission
+- dashboard-based meeting creation and discovery
+- meeting join and validation flows
+- participant tracking and mute/video controls
+- chat and host controls
+- real-time meeting rooms with LiveKit token generation
+- Render deployment blueprint for easy cloud deployment
 
-- Full-stack implementation across frontend and backend
-- Clean Django REST API structure with normalized data models
-- Realistic meeting lifecycle: create, validate, schedule, join, leave, end
-- Interactive UI with Zoom-inspired controls and presentation
-- Clear separation of concerns with models, serializers, views, and frontend pages
-- Appropriate for recruiter storytelling: feature-rich, demo-ready, and technically credible
-
-## Assignment fit checklist
-
-- [x] Backend API built with Django REST Framework
-- [x] Relational database design using SQLite
-- [x] Meeting creation and validation flow
-- [x] Participant and chat tracking
-- [x] Dashboard and meeting room frontend experience
-- [x] UI styling aligned with Zoom's modern visual language
-- [x] Good project narrative for interview discussion
+This is a polished demonstration app rather than a full production communications platform, but it is structured to look and behave like a realistic modern conference app.
 
 ---
 
-## 🚀 Setup & Execution Instructions
+## Stack
+
+- Backend: Django + DRF
+- Frontend: Next.js 14 + React
+- Styling: Tailwind CSS
+- Real-time media: LiveKit
+- Database: SQLite for local development
+- Deployment: Render blueprint included
+
+---
+
+## Project structure
+
+- backend/ — Django API and meeting logic
+- frontend/ — Next.js app and meeting UI
+- docker-compose.yml — local LiveKit server
+- livekit.yaml — LiveKit server configuration
+- render.yaml — deployment setup for Render
+- README.md — setup and usage guide
+
+---
+
+## Features
+
+- create and list meeting sessions
+- meeting validation by human-friendly ID
+- join meeting flow with display name and media toggles
+- host controls like mute all and room actions
+- dynamic participant state tracking
+- in-meeting chat messages
+- meeting end/leave flow
+- LiveKit room token generation for real-time meetings
+- polished Zoom-like UI and experience
+
+---
+
+## Local development setup
 
 ### Prerequisites
-- **Python 3.10+**
-- **Node.js 18+ & npm**
 
----
+- Python 3.10+
+- Node.js 18+
+- npm
+- Docker (for local LiveKit server)
 
-### 1. Backend Setup (Django + DRF)
+### 1. Backend setup
 
-1. Navigate to the `backend/` directory:
+1. Open a terminal and go to the backend folder:
+
    ```bash
    cd backend
    ```
-2. Install required packages:
+
+2. Create and activate a virtual environment:
+
    ```bash
-   pip install django django-cors-headers djangorestframework
+   python -m venv .venv
+   .venv\Scripts\activate
    ```
-3. Generate and apply database migrations:
+
+3. Install dependencies:
+
    ```bash
-   python manage.py makemigrations meetings
+   pip install -r requirements.txt
+   ```
+
+4. Create a backend env file:
+
+   ```env
+   DEBUG=True
+   SECRET_KEY=your-secret-key
+   ALLOWED_HOSTS=localhost,127.0.0.1
+   CORS_ALLOW_ALL_ORIGINS=True
+   CORS_ALLOWED_ORIGINS=http://localhost:3000
+   LIVEKIT_API_KEY=your-livekit-api-key
+   LIVEKIT_API_SECRET=your-livekit-api-secret
+   LIVEKIT_WS_URL=wss://your-livekit-host
+   ```
+
+5. Run migrations:
+
+   ```bash
    python manage.py migrate
    ```
-4. Seed the database with sample data (creates 1 default user, 3 upcoming meetings, and 2 recent meetings):
+
+6. Start the Django server:
+
    ```bash
-   python manage.py seed
-   ```
-5. Start the backend server on port 8000:
-   ```bash
-   python manage.py runserver --noreload
+   python manage.py runserver 0.0.0.0:8000
    ```
 
-The REST API will now be listening on `http://127.0.0.1:8000/api/`.
+The API will be available at:
 
----
-
-### 2. Frontend Setup (Next.js 14 App Router)
-
-1. Open a new terminal and navigate to the `frontend/` directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies (installs React, Next.js, Tailwind, Axios, and Lucide React):
-   ```bash
-   npm install
-   ```
-3. Start the Next.js development server:
-   ```bash
-   npm run dev
-   ```
-
-The application will compile and be accessible at `http://localhost:3000/`.
-
----
-
-## 🛠 Tech Stack Selection & Interview Justifications
-
-During your SDE evaluation interview, you can use these talking points to defend your technology selections:
-
-### 1. Backend: Django (with DRF) vs. FastAPI
-* **Why Choose Django?**: Django is a mature, batteries-included framework. It offers an out-of-the-box **Object-Relational Mapper (ORM)**, a built-in **migration management engine**, and a structured MVC layout. 
-* **The FastAPI Contrast**: While FastAPI is high-performance, it requires you to manually configure and glue third-party packages together (SQLAlchemy/Alembic/Pydantic). For a fullstack CRUD-centric application with a tight deadline, Django REST Framework viewsets and serializers minimize boilerplate code, allowing a fully working core flow in hours rather than days.
-
-### 2. Database: SQLite (Relational SQL) vs. MongoDB (NoSQL)
-* **SQLite Advantage**: SQLite is a serverless, single-file relational database. It requires zero configuration, is embedded directly within the project folder, and is highly performant for low-to-medium throughput, making it perfect for rapid local development and assignment submissions.
-* **SQL vs. NoSQL (Mongoose mapping)**: 
-  * In MongoDB (NoSQL), data is stored as hierarchical JSON documents, and relationships are often embedded as subdocuments.
-  * In SQLite (SQL), data is highly structured, normalized into tables, and references other tables via **Foreign Key constraints**. This guarantees **ACID compliance** (data consistency, e.g. a participant cannot join a meeting that doesn't exist).
-
----
-
-## 📊 Database Schema & Design Rationale
-
-Here is a breakdown of the database tables and how their structures map to Mongoose models.
-
-```mermaid
-erDiagram
-    users_user ||--o{ meetings_meeting : hosts
-    meetings_meeting ||--o{ meetings_participant : contains
-    meetings_meeting ||--o{ meetings_chatmessage : contains
-    
-    users_user {
-        int id PK "Auto Increment"
-        varchar display_name "Default: Guest User"
-        varchar email "Nullable"
-        varchar avatar_url "Nullable"
-        datetime created_at
-    }
-
-    meetings_meeting {
-        uuid id PK "UUID"
-        varchar meeting_id "Unique (format: XXX-XXX-XXXX)"
-        varchar title
-        text description "Nullable"
-        int host_id FK "References users_user.id"
-        datetime scheduled_at "Nullable (Null = Instant)"
-        int duration_minutes "Default: 60"
-        varchar password "Nullable"
-        varchar invite_link
-        bool is_active "Default: True"
-        bool is_instant "Default: False"
-        datetime created_at
-    }
-
-    meetings_participant {
-        int id PK "Auto Increment"
-        uuid meeting_id FK "References meetings_meeting.id"
-        varchar display_name
-        datetime joined_at
-        datetime left_at "Nullable"
-        bool is_host "Default: False"
-        bool is_video_on "Default: True"
-        bool is_audio_on "Default: True"
-    }
-
-    meetings_chatmessage {
-        int id PK "Auto Increment"
-        uuid meeting_id FK "References meetings_meeting.id"
-        varchar sender_name
-        text content
-        datetime sent_at
-    }
+```text
+http://localhost:8000/api/
 ```
 
-### Table 1: `users_user`
-- **Purpose**: Stores account details. Since authentication is disabled, we seed and default to ID `1` (`display_name = "Guest User"`).
-- **Mongoose Mapping**: Equivalent to a `User` collection.
-- **Rationale**: Keeps users separated from meetings, allowing profile changes to reflect globally instead of manually updating embedded copies in documents.
+### 2. LiveKit setup
 
-### Table 2: `meetings_meeting`
-- **Purpose**: Tracks meetings (both instant and scheduled).
-- **Mongoose Mapping**: Equivalent to a `Meeting` collection where the host is referenced by ObjectId (`type: mongoose.Schema.Types.ObjectId, ref: 'User'`).
-- **Rationale**:
-  - **UUID Primary Key**: The unique `id` is a UUID (Universally Unique Identifier). This hides sequence order. If we used simple auto-incrementing integers (e.g. `/meeting/1`, `/meeting/2`), malicious users could predict meeting URLs and jump in.
-  - **Visual `meeting_id`**: A separate 10-digit random ID formatted as `XXX-XXX-XXXX` is generated for the human-friendly join input, matching actual Zoom behavior.
+For local testing, you can run the included LiveKit server config:
 
-### Table 3: `meetings_participant`
-- **Purpose**: Audit log of who entered which meeting, when they left, and their microphone/camera states.
-- **Mongoose Mapping**: In Mongoose, you might store participants as an array of embedded subdocuments inside the meeting object.
-- **Rationale**: Relational databases normalization. Embedding a dynamic array inside a single row is highly discouraged in SQL. A separate join table allows querying participants efficiently, tracking history (left/joined timestamps), and scales without document size limitations (e.g. MongoDB's 16MB document cap).
+```bash
+docker compose up -d
+```
 
-### Table 4: `meetings_chatmessage`
-- **Purpose**: Stores chat history.
-- **Mongoose Mapping**: Equivalent to a `ChatMessage` collection pointing to a meeting reference.
+This uses the configuration in [livekit.yaml](livekit.yaml) and exposes the usual LiveKit ports.
 
----
+### 3. Frontend setup
 
-## 💻 Frontend Page Architecture (Next.js 14 App Router)
+In a second terminal:
 
-Next.js 14 App Router splits components into **Server Components** and **Client Components** to optimize page loads.
+```bash
+cd frontend
+npm install
+npm run dev
+```
 
-### 1. Dashboard (`app/page.js` - Server Component)
-* **How it works**: Fetches the upcoming and recent meetings directly from the Django API on the server using `fetch('url', { cache: 'no-store' })` during request time.
-* **Why?**: Bypasses browser loading states. The page loads with HTML pre-populated, which is great for SEO and performance. It passes the raw data to `DashboardClient` to handle state.
+The app will be available at:
 
-### 2. Interactive Dashboard (`app/DashboardClient.jsx` - Client Component)
-* **How it works**: Uses React hooks (`useState`, `useRouter`) to handle modals, forms, and triggers.
-* **Join Meeting Flow**: Validates the user's meeting ID input. Tries to match a full invite link first and strips out the Meeting ID query, then requests validation from Django (`GET /api/meetings/validate/<mid>`). If it does not exist, it displays an inline alert immediately instead of navigating.
-* **Schedule Meeting Flow**: Submits scheduled times and durations, then triggers a page refresh (`router.refresh()`) which makes Next.js re-fetch server-side properties in `page.js` to update the lists in real-time.
-
-### 3. Pre-Join Screen (`app/join/page.js` - Client Component)
-* **How it works**: Leverages `navigator.mediaDevices.getUserMedia` to render a live mirror video grid, letting users toggle hardware and set their display name before pushing to the meeting URL.
-
-### 4. Meeting Room (`app/meeting/[id]/page.js` - Client Component)
-* **How it works**: Hosts a full dark-theme Zoom grid. Toggles microphone and camera tracks, polls `/api/chat/` every 3 seconds to synchronize real-time messages, displays participants joining from other tabs, and simulates recording, emoji reactions, and screen sharing.
+```text
+http://localhost:3000
+```
 
 ---
 
-## 💡 Assumptions Made
-1. **Single User Mode**: Authentication is omitted per requirements. Guest User (ID `1`) acts as the active session.
-2. **WebRTC Integration**: Actual peer-to-peer WebRTC video streaming is simulated. The grid renders your live camera and displays visual animated placeholders for other participants fetched from the database (opening additional tabs/windows in the same meeting will dynamically join them and render their camera states).
+## Environment variables
+
+The backend expects these values in [backend/.env](backend/.env):
+
+```env
+DEBUG=True
+SECRET_KEY=your-secret-key
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOW_ALL_ORIGINS=True
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+LIVEKIT_API_KEY=your-livekit-api-key
+LIVEKIT_API_SECRET=your-livekit-api-secret
+LIVEKIT_WS_URL=wss://your-livekit-host
+```
+
+The frontend can use:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_WS_URL=ws://localhost:8000
+```
+
+---
+
+## LiveKit architecture
+
+The meeting room uses LiveKit for media connectivity. The flow is:
+
+1. User enters the meeting room.
+2. Frontend requests a JWT token from the backend.
+3. Django backend generates a token using the configured LiveKit API key and secret.
+4. Frontend connects to the LiveKit room using that JWT.
+5. Real-time audio and video streams are established through the LiveKit server.
+
+This is the real-time infrastructure behind the actual meeting experience.
+
+---
+
+## Deployment
+
+A Render deployment blueprint is included in [render.yaml](render.yaml). It configures:
+
+- backend web service
+- frontend web service
+- Python runtime for Django
+- Node runtime for Next.js
+- env variables for LiveKit and API URLs
+
+Before deployment, replace the placeholder LiveKit values with your real credentials and update the frontend/backend URLs for the deployed hosts.
+
+---
+
+## Notes
+
+- SQLite is used for local development and quick demonstration setup.
+- The app is designed to feel like a polished Zoom clone for assignment and portfolio use.
+- It is not a full enterprise-grade conferencing stack, but it is a strong end-to-end example of meeting product thinking and real-time media integration.
+
+---
+
+## Verification status
+
+The project has been validated for:
+
+- Django startup with env loading
+- LiveKit JWT generation using configured credentials
+- frontend production build compatibility
+
+The backend environment must still be pointed to a valid LiveKit host and credentials for full live meeting validation in a real browser session.

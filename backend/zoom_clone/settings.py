@@ -10,22 +10,25 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-7ve-&nwj-n#3so+u-l3rt79v5i@mcg77b@4oz%+%&w#v_p+9**'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-7ve-&nwj-n#3so+u-l3rt79v5i@mcg77b@4oz%+%&w#v_p+9**')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if host.strip()]
 
 
 # Application definition
@@ -39,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     # Third party apps
+    'channels',
     'corsheaders',
     'rest_framework',
 
@@ -75,7 +79,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'zoom_clone.wsgi.application'
+ASGI_APPLICATION = 'zoom_clone.asgi.application'
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
@@ -135,6 +145,16 @@ MAILERS = {
 }
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() == 'true'
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+    if origin.strip()
+]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# LiveKit config
+LIVEKIT_API_KEY = os.getenv('LIVEKIT_API_KEY', 'devkey')
+LIVEKIT_API_SECRET = os.getenv('LIVEKIT_API_SECRET', 'secret')
+LIVEKIT_WS_URL = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')

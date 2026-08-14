@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import { 
   Mic, MicOff, Video, VideoOff, Users, MessageSquare, PhoneOff, 
   ShieldAlert, VideoIcon, Smile, Settings, Shield, Grid, Tv, 
@@ -10,7 +11,7 @@ import {
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
 import Modal from '../../../components/Modal';
-import api from '../../../lib/api';
+import api, { WS_BASE_URL } from '../../../lib/api';
 
 export default function MeetingRoomPage() {
   const params = useParams();
@@ -63,10 +64,16 @@ export default function MeetingRoomPage() {
 
   // Reactions state
   const [reactions, setReactions] = useState([]);
+  const [remoteStreams, setRemoteStreams] = useState({});
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [roomToken, setRoomToken] = useState('');
+  const [livekitUrl, setLivekitUrl] = useState('ws://localhost:7880');
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const socketRef = useRef(null);
+  const peerConnectionsRef = useRef({});
   const mediaPermissionErrorRef = useRef(false);
 
   // 1. Fetch pre-join configurations from sessionStorage
@@ -232,6 +239,29 @@ export default function MeetingRoomPage() {
 
     return () => clearInterval(interval);
   }, [meetingId, displayName]);
+
+  useEffect(() => {
+    const createLivekitToken = async () => {
+      if (!meetingId || !selfParticipantId) return;
+
+      try {
+        const payload = {
+          display_name: displayName,
+          is_host: displayName === hostName,
+        };
+
+        const res = await api.post(`/meetings/${meetingId}/livekit_token/`, payload);
+        setRoomToken(res.data.token);
+        setLivekitUrl(res.data.ws_url || 'ws://localhost:7880');
+        setConnectionStatus('ready');
+      } catch (err) {
+        console.error('Failed to create LiveKit token', err);
+        setConnectionStatus('failed');
+      }
+    };
+
+    createLivekitToken();
+  }, [meetingId, selfParticipantId, displayName, hostName]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -479,9 +509,27 @@ export default function MeetingRoomPage() {
 
       {/* Body panel split: Video grid vs Sidebar */}
       <div className="flex-1 flex overflow-hidden w-full h-full">
+        {roomToken ? (
+          <LiveKitRoom
+            video={true}
+            audio={true}
+            token={roomToken}
+            serverUrl={livekitUrl}
+            onConnected={() => setLivekitConnected(true)}
+            onDisconnected={() => setLivekitConnected(false)}
+            connect={true}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <VideoConference />
+          </LiveKitRoom>
+        ) : (
+          <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
+            <div className="text-center text-sm text-gray-300">Connecting to meeting room...</div>
+          </div>
+        )}
         
         {/* Video Area containing Speaker View / Gallery View */}
-        <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
+        <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full hidden">
           
           {viewMode === 'gallery' ? (
             /* 1. GALLERY VIEW - Standard equal grid */
@@ -516,6 +564,29 @@ export default function MeetingRoomPage() {
               </div>
 
               {/* Other active participants */}
+              {Object.entries(remoteStreams).map(([peerId, stream]) => (
+                <div
+                  key={peerId}
+                  className="relative rounded-3xl overflow-hidden bg-gray-900 border border-white/5 shadow-xl flex items-center justify-center group"
+                >
+                  <video
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover"
+                    ref={(node) => {
+                      if (node) {
+                        node.srcObject = stream;
+                      }
+                    }}
+                  />
+                  <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-xl flex items-center space-x-2 border border-white/5 text-xs">
+                    <Mic size={14} className="text-green-500" />
+                    <span>Remote Peer</span>
+                  </div>
+                </div>
+              ))}
+
               {activeParticipants.map((p) => (
                 <div
                   key={p.id}

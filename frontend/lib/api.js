@@ -1,12 +1,14 @@
 import axios from 'axios';
 
-// Create an Axios instance with a configurable baseURL.
-// During development, we default to the local Django server port 8000.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+export { API_BASE_URL, WS_BASE_URL };
 export default api;

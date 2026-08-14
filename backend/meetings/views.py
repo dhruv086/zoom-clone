@@ -1,8 +1,12 @@
-from datetime import timedelta
+import os
+from datetime import timedelta, datetime, timezone as dt_timezone
+
+import jwt
 from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
 from meetings.models import Meeting, Participant, User, ChatMessage
 from meetings.serializers import MeetingSerializer, ParticipantSerializer, UserSerializer, ChatMessageSerializer
 
@@ -131,6 +135,47 @@ class MeetingViewSet(viewsets.ModelViewSet):
         return Response({
             "status": "muted_all",
             "participants": ParticipantSerializer(queryset, many=True).data
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def livekit_token(self, request, pk=None):
+        meeting = self.get_object()
+        display_name = request.data.get('display_name', 'Guest User')
+        is_host = request.data.get('is_host', False)
+
+        room_name = str(meeting.meeting_id)
+        user_name = display_name.strip() or 'Guest User'
+        api_key = os.getenv('LIVEKIT_API_KEY', 'devkey')
+        api_secret = os.getenv('LIVEKIT_API_SECRET', 'secret')
+        ws_url = os.getenv('LIVEKIT_WS_URL', 'ws://localhost:7880')
+
+        now = datetime.now(dt_timezone.utc)
+        payload = {
+            'iss': api_key,
+            'sub': f"{meeting.id}:{user_name}",
+            'iat': int(now.timestamp()),
+            'exp': int((now + timedelta(hours=4)).timestamp()),
+            'nbf': int(now.timestamp()),
+            'name': user_name,
+            'room': room_name,
+            'video': {
+                'room': room_name,
+                'roomJoin': True,
+                'canPublish': True,
+                'canSubscribe': True,
+                'canPublishData': True,
+            },
+        }
+        if is_host:
+            payload['video']['roomAdmin'] = True
+
+        token = jwt.encode(payload, api_secret, algorithm='HS256')
+
+        return Response({
+            'token': token,
+            'room_name': room_name,
+            'ws_url': ws_url,
+            'display_name': user_name,
         }, status=status.HTTP_200_OK)
 
 

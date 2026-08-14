@@ -1,0 +1,37 @@
+# Python / Django
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.log
+
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/.env.local
+frontend/.env.*.local
+!frontend/.env.local.example
+
+# Build artifacts
+build/
+dist/
+coverage/
+
+# Editor / OS
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Misc
+*.tmp
+*.bak
