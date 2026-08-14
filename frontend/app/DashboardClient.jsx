@@ -651,20 +651,20 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
-              <span>Multi-User Collaboration</span>
+              <span>Meetings & Scheduling</span>
             </h4>
             <p className="text-xs">
-              To test the synchronized real-time chat, participant lists, and moderation controls, copy the meeting invite link and open it in a <strong>separate incognito browser window</strong>.
+              Start an instant meeting with one click, join an existing meeting using a 10-digit Meeting ID or invite URL, or schedule future calls with custom topics, descriptions, dates, and durations.
             </p>
           </section>
 
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
-              <span>Video & Audio Inputs</span>
+              <span>Audio & Video Controls</span>
             </h4>
             <p className="text-xs">
-              Open the settings panel (gear icon) to select your actual connected camera and microphone. In a live meeting room, changing these selectors dynamically switches your media stream in real-time.
+              Select your preferred camera and microphone from the settings panel (gear icon). Toggles inside the pre-join lobby and the live meeting room allow you to adjust your camera and microphone states at any time.
             </p>
           </section>
 
@@ -674,17 +674,17 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
               <span>Screen Sharing</span>
             </h4>
             <p className="text-xs">
-              Click <strong>Share Screen</strong> on the dashboard to validate a meeting ID and start presenting immediately, or use the <strong>Share Screen</strong> control inside the live meeting room.
+              Present your screen, browser tab, or application window directly from the dashboard by entering the target Meeting ID, or toggle screen sharing dynamically inside a live meeting session.
             </p>
           </section>
 
           <section className="space-y-2">
             <h4 className="font-bold text-gray-800 dark:text-gray-100 flex items-center space-x-1.5">
               <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span>
-              <span>Host Moderation & Security</span>
+              <span>Host Controls & Security</span>
             </h4>
             <p className="text-xs">
-              As a meeting host, you can lock the meeting, enable waiting rooms, restrict chat/rename/sharing permissions, mute all microphones, or eject users from the room in real-time.
+              Meeting hosts have access to an interactive Security panel to lock the meeting, enable waiting rooms, toggle chat, screen sharing, and renaming permissions for participants, as well as mute all microphones or remove users from the call.
             </p>
           </section>
 
