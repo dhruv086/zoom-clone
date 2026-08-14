@@ -154,7 +154,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
         ).exists()
         if not is_host:
             return Response({'detail': 'Only the host can mute everyone.'}, status=status.HTTP_403_FORBIDDEN)
-        queryset = Participant.objects.filter(meeting=meeting, left_at__isnull=True)
+        queryset = Participant.objects.filter(meeting=meeting, left_at__isnull=True, is_host=False)
         queryset.update(is_audio_on=False)
 
         return Response({
@@ -252,6 +252,17 @@ class ParticipantViewSet(viewsets.ModelViewSet):
         if is_video_on is None:
             is_video_on = not participant.is_video_on
         participant.is_video_on = is_video_on
+        participant.save()
+        return Response(ParticipantSerializer(participant).data)
+
+    @action(detail=True, methods=['post'])
+    def kick(self, request, pk=None):
+        participant = self.get_object()
+        meeting = participant.meeting
+        is_host = has_host_access(meeting, request.data.get('host_access_token'))
+        if not is_host:
+            return Response({'detail': 'Only the host can remove participants.'}, status=status.HTTP_403_FORBIDDEN)
+        participant.left_at = timezone.now()
         participant.save()
         return Response(ParticipantSerializer(participant).data)
 

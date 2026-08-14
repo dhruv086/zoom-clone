@@ -354,6 +354,13 @@ export default function MeetingRoomPage() {
         } else if (message.type === 'meeting-ended') {
           room.disconnect();
           router.push('/');
+        } else if (message.type === 'kick') {
+          const selfPartId = sessionStorage.getItem('zoom_clone_participant_id');
+          if (String(message.participantId) === String(selfPartId)) {
+            room.disconnect();
+            alert('You have been removed from the meeting by the host.');
+            router.push('/');
+          }
         }
       } catch (error) {
         console.warn('Ignoring invalid LiveKit room message', error);
@@ -592,20 +599,32 @@ export default function MeetingRoomPage() {
       return;
     }
     setIsMutedAll(true);
-    setIsAudioOn(false);
+    // Exclude host from muting
     setActiveParticipants((prev) => prev.map((participant) => ({ ...participant, is_audio_on: false })));
-    await roomRef.current?.localParticipant.setMicrophoneEnabled(false);
-
-    if (selfParticipantId) {
-      try {
-        await api.post(`/participants/${selfParticipantId}/toggle_audio/`, { is_audio_on: false });
-      } catch (err) {
-        console.error('Failed to sync host mic mute state', err);
-      }
-    }
 
     setMuteNotice('Host has muted all participant microphones');
     setTimeout(() => setMuteNotice(''), 4000);
+  };
+
+  // Host Kick Participant action
+  const handleKickParticipant = async (participant) => {
+    if (!isHost || !selfParticipantId) return;
+    const confirmKick = window.confirm(`Are you sure you want to remove ${participant.display_name} from the meeting?`);
+    if (!confirmKick) return;
+
+    try {
+      await api.post(`/participants/${participant.id}/kick/`, {
+        host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
+      });
+      await roomRef.current?.localParticipant.publishData(
+        new TextEncoder().encode(JSON.stringify({ type: 'kick', participantId: participant.id })),
+        { reliable: true },
+      );
+      setActiveParticipants((prev) => prev.filter((p) => p.id !== participant.id));
+    } catch (err) {
+      console.error('Failed to remove participant', err);
+      alert('Failed to remove participant. Please try again.');
+    }
   };
 
   // Change theme mode
@@ -1022,9 +1041,19 @@ export default function MeetingRoomPage() {
                         className="flex items-center justify-between text-xs p-2 rounded-xl hover:bg-white/5"
                       >
                         <span className="font-semibold">{p.display_name}</span>
-                        <div className="flex items-center space-x-2 text-gray-500">
-                          {p.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
-                          {p.is_video_on ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
+                        <div className="flex items-center space-x-3 text-gray-500">
+                          {isHost && (
+                            <button
+                              onClick={() => handleKickParticipant(p)}
+                              className="text-[10px] bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/20 hover:border-red-500/30 px-2 py-1 rounded-lg font-semibold transition-all"
+                            >
+                              Remove
+                            </button>
+                          )}
+                          <div className="flex items-center space-x-1">
+                            {p.is_audio_on && !isMutedAll ? <Mic size={14} className="text-green-500" /> : <MicOff size={14} className="text-red-500" />}
+                            {p.is_video_on ? <Video size={14} className="text-green-500" /> : <VideoOff size={14} className="text-red-500" />}
+                          </div>
                         </div>
                       </div>
                     ))}

@@ -48,12 +48,34 @@ class MeetingParticipantAPITests(TestCase):
         }, format='json')
 
         self.assertEqual(response.status_code, 200)
-        self.meeting.participants.filter(left_at__isnull=True).update()
-        for participant in self.meeting.participants.filter(left_at__isnull=True):
-            self.assertFalse(participant.is_audio_on)
+        self.host_participant.refresh_from_db()
+        self.other_participant.refresh_from_db()
+        
+        # Host remains unmuted
+        self.assertTrue(self.host_participant.is_audio_on)
+        # Other participant is muted
+        self.assertFalse(self.other_participant.is_audio_on)
 
     def test_non_host_cannot_mute_all(self):
         url = reverse('meeting-mute-all', kwargs={'pk': self.meeting.pk})
         response = self.client.post(url, {'participant_id': self.other_participant.id}, format='json')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_kick_participant_by_host(self):
+        url = reverse('participant-kick', kwargs={'pk': self.other_participant.pk})
+        response = self.client.post(url, {
+            'host_access_token': str(self.meeting.host_access_token),
+        }, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.other_participant.refresh_from_db()
+        self.assertIsNotNone(self.other_participant.left_at)
+
+    def test_kick_participant_by_non_host_fails(self):
+        url = reverse('participant-kick', kwargs={'pk': self.other_participant.pk})
+        response = self.client.post(url, {
+            'host_access_token': 'wrong-token',
+        }, format='json')
 
         self.assertEqual(response.status_code, 403)
