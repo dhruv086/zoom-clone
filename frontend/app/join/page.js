@@ -1,13 +1,21 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Mic, MicOff, Video, VideoOff, AlertCircle } from 'lucide-react';
 import Button from '../../components/Button';
 import Card from '../../components/Card';
 import api from '../../lib/api';
 
-export default function PreJoinPage() {
+export default function JoinPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#121214] text-gray-600 dark:text-gray-300">Loading meeting details...</div>}>
+      <PreJoinPage />
+    </Suspense>
+  );
+}
+
+function PreJoinPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mid = searchParams.get('mid');

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { LiveKitRoom, VideoConference } from '@livekit/components-react';
 import { 
   Mic, MicOff, Video, VideoOff, Users, MessageSquare, PhoneOff, 
   ShieldAlert, VideoIcon, Smile, Settings, Shield, Grid, Tv, 
@@ -510,18 +509,12 @@ export default function MeetingRoomPage() {
       {/* Body panel split: Video grid vs Sidebar */}
       <div className="flex-1 flex overflow-hidden w-full h-full">
         {roomToken ? (
-          <LiveKitRoom
-            video={true}
-            audio={true}
-            token={roomToken}
-            serverUrl={livekitUrl}
-            onConnected={() => setLivekitConnected(true)}
-            onDisconnected={() => setLivekitConnected(false)}
-            connect={true}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <VideoConference />
-          </LiveKitRoom>
+          <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
+            <div className="text-center text-sm text-gray-300">
+              LiveKit session ready for room {meetingTitle}.<br />
+              Connection status: {connectionStatus}
+            </div>
+          </div>
         ) : (
           <div className="flex-grow p-6 pt-20 pb-28 flex flex-col items-center justify-center relative overflow-y-auto max-w-6xl mx-auto w-full h-full">
             <div className="text-center text-sm text-gray-300">Connecting to meeting room...</div>
