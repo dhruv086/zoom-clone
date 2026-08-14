@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Video, Plus, Calendar, Copy, Clock, Check, AlertCircle, Share2, Settings, HelpCircle } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
@@ -9,6 +9,23 @@ import Modal from '../components/Modal';
 import ClockComponent from '../components/Clock';
 import api from '../lib/api';
 import { discardPendingScreenShareStream, setPendingScreenShareStream } from '../lib/pendingScreenShare';
+
+const normalizeMeetingId = (idOrUrl) => {
+  if (!idOrUrl) return '';
+  let id = idOrUrl.trim();
+  if (id.includes('mid=')) {
+    try {
+      const urlParams = new URLSearchParams(id.split('?')[1]);
+      const extracted = urlParams.get('mid');
+      if (extracted) id = extracted;
+    } catch (err) {}
+  }
+  const clean = id.replace(/[^a-zA-Z0-9]/g, '');
+  if (clean.length === 10) {
+    return `${clean.substring(0, 3)}-${clean.substring(3, 6)}-${clean.substring(6, 10)}`;
+  }
+  return id;
+};
 
 const formatMeetingDate = (dateString) =>
   new Intl.DateTimeFormat('en-US', {
@@ -38,8 +55,15 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
   const [settingsTab, setSettingsTab] = useState('profile');
   const [displayName, setDisplayName] = useState('Guest User');
   const [theme, setTheme] = useState('light');
-  const [mockVideoDevice, setMockVideoDevice] = useState('Integrated HD Webcam');
-  const [mockAudioDevice, setMockAudioDevice] = useState('Default Microphone');
+  
+  const searchParams = useSearchParams();
+  const kicked = searchParams ? searchParams.get('kicked') : null;
+  const [isKickedModalOpen, setIsKickedModalOpen] = useState(false);
+
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedVideoDevice, setSelectedVideoDevice] = useState('');
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState('');
 
   // Join Modal State
   const [joinId, setJoinId] = useState('');
@@ -65,7 +89,7 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
   // Copy Link State
   const [copiedId, setCopiedId] = useState(null);
 
-  // Load name & theme settings on mount
+  // Load settings, check kick status, and query actual input hardware devices on mount
   useEffect(() => {
     const savedName = sessionStorage.getItem('zoom_clone_name') || 'Guest User';
     setDisplayName(savedName);
@@ -77,7 +101,35 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, []);
+
+    if (kicked === 'true') {
+      setIsKickedModalOpen(true);
+      router.replace('/');
+    }
+
+    const fetchDevices = async () => {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoIn = devices.filter((d) => d.kind === 'videoinput');
+          const audioIn = devices.filter((d) => d.kind === 'audioinput');
+          
+          setVideoDevices(videoIn);
+          setAudioDevices(audioIn);
+          
+          if (videoIn.length > 0) {
+            setSelectedVideoDevice(sessionStorage.getItem('zoom_clone_video_device') || videoIn[0].deviceId);
+          }
+          if (audioIn.length > 0) {
+            setSelectedAudioDevice(sessionStorage.getItem('zoom_clone_audio_device') || audioIn[0].deviceId);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to enumerate devices:', err);
+      }
+    };
+    fetchDevices();
+  }, [kicked, router]);
 
   const copyToClipboard = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -125,15 +177,7 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
     setJoinError('');
     setIsValidating(true);
 
-    let mid = joinId.trim();
-
-    if (mid.includes('mid=')) {
-      try {
-        const urlParams = new URLSearchParams(mid.split('?')[1]);
-        const extracted = urlParams.get('mid');
-        if (extracted) mid = extracted;
-      } catch (err) {}
-    }
+    const mid = normalizeMeetingId(joinId);
 
     try {
       const res = await api.get(`/meetings/validate/${mid}/`);
@@ -155,25 +199,18 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
     setShareError('');
     setIsShareValidating(true);
 
-    let mid = shareId.trim();
-    if (mid.includes('mid=')) {
-      try {
-        const urlParams = new URLSearchParams(mid.split('?')[1]);
-        const extracted = urlParams.get('mid');
-        if (extracted) mid = extracted;
-      } catch (err) {}
-    }
+    const mid = normalizeMeetingId(shareId);
 
     try {
-      // This must happen while handling the button click. Calling it after
-      // navigation is no longer a trusted browser gesture and is rejected.
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
-      setPendingScreenShareStream(screenStream);
+      // 1. Validate the meeting first before prompting for screen sharing (better UX)
       const res = await api.get(`/meetings/validate/${mid}/`);
       if (res.data.valid) {
+        // 2. Request user for screen sharing permission
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
+        setPendingScreenShareStream(screenStream);
         setIsShareScreenOpen(false);
         setShareId('');
         // Fallback marker for a page refresh during navigation.
@@ -555,30 +592,48 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase">
-                Select Camera (Simulated)
+                Select Camera
               </label>
               <select
-                value={mockVideoDevice}
-                onChange={(e) => setMockVideoDevice(e.target.value)}
+                value={selectedVideoDevice}
+                onChange={(e) => {
+                  setSelectedVideoDevice(e.target.value);
+                  sessionStorage.setItem('zoom_clone_video_device', e.target.value);
+                }}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#232328] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
-                <option value="Integrated HD Webcam">Integrated HD Webcam</option>
-                <option value="OBS Virtual Camera">OBS Virtual Camera</option>
-                <option value="Logitech StreamCam Pro">Logitech StreamCam Pro</option>
+                {videoDevices.length === 0 ? (
+                  <option value="">No cameras detected or permission not granted</option>
+                ) : (
+                  videoDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Camera (${d.deviceId.substring(0, 5)})`}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 mb-1.5 uppercase">
-                Select Microphone (Simulated)
+                Select Microphone
               </label>
               <select
-                value={mockAudioDevice}
-                onChange={(e) => setMockAudioDevice(e.target.value)}
+                value={selectedAudioDevice}
+                onChange={(e) => {
+                  setSelectedAudioDevice(e.target.value);
+                  sessionStorage.setItem('zoom_clone_audio_device', e.target.value);
+                }}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#232328] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
-                <option value="Default Microphone">Default Microphone</option>
-                <option value="Headset Microphone (Realtek)">Headset Microphone (Realtek)</option>
-                <option value="Yeti USB Condenser Mic">Yeti USB Condenser Mic</option>
+                {audioDevices.length === 0 ? (
+                  <option value="">No microphones detected or permission not granted</option>
+                ) : (
+                  audioDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Microphone (${d.deviceId.substring(0, 5)})`}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div className="flex justify-end pt-2">
@@ -781,6 +836,24 @@ export default function DashboardClient({ upcomingMeetings, recentMeetings }) {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Kicked Modal */}
+      <Modal isOpen={isKickedModalOpen} onClose={() => setIsKickedModalOpen(false)} title="Meeting Notification">
+        <div className="text-center py-6 space-y-4">
+          <div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-950/30 rounded-full flex items-center justify-center text-red-500">
+            <AlertCircle size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 dark:text-white">Removed from Meeting</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            You have been removed from this meeting by the host.
+          </p>
+          <div className="pt-2">
+            <Button variant="primary" onClick={() => setIsKickedModalOpen(false)} className="w-full">
+              OK
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

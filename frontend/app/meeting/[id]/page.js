@@ -8,7 +8,8 @@ import {
 import { 
   Mic, MicOff, Video, VideoOff, Users, MessageSquare, PhoneOff, 
   ShieldAlert, VideoIcon, Smile, Settings, Shield, Grid, Tv, 
-  HelpCircle, Lock, LockOpen, Check, X, LogOut, AlertTriangle 
+  HelpCircle, Lock, LockOpen, Check, X, LogOut, AlertTriangle,
+  UserMinus
 } from 'lucide-react';
 import Button from '../../../components/Button';
 import Card from '../../../components/Card';
@@ -48,8 +49,10 @@ export default function MeetingRoomPage() {
   const [viewMode, setViewMode] = useState('gallery'); // 'gallery' | 'speaker'
   const [settingsTab, setSettingsTab] = useState('profile');
   const [theme, setTheme] = useState('light');
-  const [mockVideoDevice, setMockVideoDevice] = useState('Integrated HD Webcam');
-  const [mockAudioDevice, setMockAudioDevice] = useState('Default Microphone');
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedVideoDevice, setSelectedVideoDevice] = useState('');
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState('');
 
   // Security Policy States
   const [isMeetingLocked, setIsMeetingLocked] = useState(false);
@@ -113,6 +116,56 @@ export default function MeetingRoomPage() {
   // The pre-share flag is consumed only on entry; later control changes must not retrigger it.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meetingId]);
+
+  // Query actual hardware inputs on mount
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoIn = devices.filter((d) => d.kind === 'videoinput');
+          const audioIn = devices.filter((d) => d.kind === 'audioinput');
+          
+          setVideoDevices(videoIn);
+          setAudioDevices(audioIn);
+          
+          if (videoIn.length > 0) {
+            setSelectedVideoDevice(sessionStorage.getItem('zoom_clone_video_device') || videoIn[0].deviceId);
+          }
+          if (audioIn.length > 0) {
+            setSelectedAudioDevice(sessionStorage.getItem('zoom_clone_audio_device') || audioIn[0].deviceId);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to enumerate devices:', err);
+      }
+    };
+    fetchDevices();
+  }, []);
+
+  const handleVideoDeviceChange = async (deviceId) => {
+    setSelectedVideoDevice(deviceId);
+    sessionStorage.setItem('zoom_clone_video_device', deviceId);
+    if (roomRef.current) {
+      try {
+        await roomRef.current.switchActiveDevice(Track.Source.Camera, deviceId);
+      } catch (err) {
+        console.error('Failed to switch video device:', err);
+      }
+    }
+  };
+
+  const handleAudioDeviceChange = async (deviceId) => {
+    setSelectedAudioDevice(deviceId);
+    sessionStorage.setItem('zoom_clone_audio_device', deviceId);
+    if (roomRef.current) {
+      try {
+        await roomRef.current.switchActiveDevice(Track.Source.Microphone, deviceId);
+      } catch (err) {
+        console.error('Failed to switch audio device:', err);
+      }
+    }
+  };
 
   // 2. LiveKit owns media capture and publishing. This avoids opening a
   // second local stream that competes with the tracks published to the room.
@@ -358,8 +411,7 @@ export default function MeetingRoomPage() {
           const selfPartId = sessionStorage.getItem('zoom_clone_participant_id');
           if (String(message.participantId) === String(selfPartId)) {
             room.disconnect();
-            alert('You have been removed from the meeting by the host.');
-            router.push('/');
+            router.push('/?kicked=true');
           }
         }
       } catch (error) {
@@ -584,10 +636,9 @@ export default function MeetingRoomPage() {
 
   // Host Mute All action
   const handleMuteAll = async () => {
-    if (!isHost || !selfParticipantId) return;
+    if (!isHost) return;
     try {
       await api.post(`/meetings/${meetingId}/mute_all/`, {
-        participant_id: selfParticipantId,
         host_access_token: sessionStorage.getItem(`zoom_clone_host_key_${meetingId}`),
       });
       await roomRef.current?.localParticipant.publishData(
@@ -1045,9 +1096,11 @@ export default function MeetingRoomPage() {
                           {isHost && (
                             <button
                               onClick={() => handleKickParticipant(p)}
-                              className="text-[10px] bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/20 hover:border-red-500/30 px-2 py-1 rounded-lg font-semibold transition-all"
+                              className="flex items-center text-[10px] bg-red-500 hover:bg-red-600 active:bg-red-700 text-white px-2 py-1 rounded-lg font-bold shadow-sm transition-all transform active:scale-95 duration-100"
+                              title="Remove participant from meeting"
                             >
-                              Remove
+                              <UserMinus size={11} className="mr-1" />
+                              <span>Remove</span>
                             </button>
                           )}
                           <div className="flex items-center space-x-1">
@@ -1424,30 +1477,42 @@ export default function MeetingRoomPage() {
           <div className="space-y-4 text-gray-300">
             <div>
               <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">
-                Select Camera (Simulated)
+                Select Camera
               </label>
               <select
-                value={mockVideoDevice}
-                onChange={(e) => setMockVideoDevice(e.target.value)}
+                value={selectedVideoDevice}
+                onChange={(e) => handleVideoDeviceChange(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-700 bg-[#232328] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
-                <option value="Integrated HD Webcam">Integrated HD Webcam</option>
-                <option value="OBS Virtual Camera">OBS Virtual Camera</option>
-                <option value="Logitech StreamCam Pro">Logitech StreamCam Pro</option>
+                {videoDevices.length === 0 ? (
+                  <option value="">No cameras detected or permission not granted</option>
+                ) : (
+                  videoDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Camera (${d.deviceId.substring(0, 5)})`}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div>
               <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">
-                Select Microphone (Simulated)
+                Select Microphone
               </label>
               <select
-                value={mockAudioDevice}
-                onChange={(e) => setMockAudioDevice(e.target.value)}
+                value={selectedAudioDevice}
+                onChange={(e) => handleAudioDeviceChange(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-gray-700 bg-[#232328] text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
-                <option value="Default Microphone">Default Microphone</option>
-                <option value="Headset Microphone (Realtek)">Headset Microphone (Realtek)</option>
-                <option value="Yeti USB Condenser Mic">Yeti USB Condenser Mic</option>
+                {audioDevices.length === 0 ? (
+                  <option value="">No microphones detected or permission not granted</option>
+                ) : (
+                  audioDevices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Microphone (${d.deviceId.substring(0, 5)})`}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
             <div className="flex justify-end pt-2">

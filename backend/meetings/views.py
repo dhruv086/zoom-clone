@@ -148,10 +148,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def mute_all(self, request, pk=None):
         meeting = self.get_object()
-        participant_id = request.data.get('participant_id')
-        is_host = has_host_access(meeting, request.data.get('host_access_token')) and Participant.objects.filter(
-            id=participant_id, meeting=meeting, left_at__isnull=True, is_host=True
-        ).exists()
+        is_host = has_host_access(meeting, request.data.get('host_access_token'))
         if not is_host:
             return Response({'detail': 'Only the host can mute everyone.'}, status=status.HTTP_403_FORBIDDEN)
         queryset = Participant.objects.filter(meeting=meeting, left_at__isnull=True, is_host=False)
